@@ -1,0 +1,7 @@
+This directory contains methods for proposing steps.
+
+The methods must each accept the optimizer as the first input.
+Optional extra inputs are allowed.
+
+Every method is assumed to output *exactly* the following:
+    0) step, the proposed step.
