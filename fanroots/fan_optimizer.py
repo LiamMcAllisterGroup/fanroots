@@ -13,9 +13,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import time
 
-from fan_optimizer.step_proposal import newton, gauss_newton, lma, gradient_descent
-from fan_optimizer.step_size import naive, backtracking_line_search, shrink, ternary
-from fan_optimizer.step_taking import flop
+from lib.util.fan_root.src.step_proposal import newton, gauss_newton, lma, gradient_descent
+from lib.util.fan_root.src.step_size import naive, backtracking_line_search, shrink, ternary
+from lib.util.fan_root.src.step_taking import flop
 
 def always_true(*args, **kwargs):
     return True
