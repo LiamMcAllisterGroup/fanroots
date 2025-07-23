@@ -907,7 +907,7 @@ class BatchOptimizer():
             # create new figures
             optimizers[0]._create_figures(add_traces=True)
             for optimizer in optimizers[1:]:
-                time.sleep(0.02)
+                time.sleep(0.08)
                 optimizer.fig = optimizers[0].fig
                 optimizer._add_traces()
 
