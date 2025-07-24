@@ -970,8 +970,8 @@ class BatchOptimizer():
                 if err is None:
                     self.batch[i].load_state(state)
                     self.finished[i] = True
-                    if self.verbosity >= 1:
-                        print(f"frac finished = {sum(self.finished)/len(self.finished)}", end='\r')
+                    #if self.verbosity >= 1:
+                    #    print(f"frac finished = {sum(self.finished)/len(self.finished)}", end='\r')
                 else:
                     print(f"Task {i} failed with exception: {err}")
 
