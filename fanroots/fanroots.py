@@ -210,7 +210,7 @@ class FanRoots:
 
         # the current phase/intersection numbers
         if triang is None:
-            self.triang = self.vc.subdivide(self.heights)
+            self.triang = self.vc.subdivide(self.heights).as_toric()
         else:
             self.triang = triang
         if kappa is None:

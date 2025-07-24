@@ -115,6 +115,7 @@ class JumpStep:
             triang = optimizer.triang
             kappa  = optimizer.kappa
         else:
+            triang = triang.as_toric()
             kappa = triang.intersection_numbers(in_basis=True,
                                                 pushed_down=True,
                                                 as_np_array=True)

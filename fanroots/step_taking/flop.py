@@ -75,12 +75,11 @@ class FlopStep:
             assert optimizer.triang.secondary_cone().contains(h_curr)
 
         # try to walk along the step
-        out = optimizer.triang.flip_linear(
+        out = optimizer.triang.flop_linear(
             h_target=h_target,
             h_init=h_curr,
             stop_at_deletion=True,
             max_N_flips=self.max_num_flips,
-            compute_kappa=True,
             check_kappa=self.check_kappa,
             kappa_init=optimizer.kappa,
             verbosity=int(optimizer.verbosity>1),
