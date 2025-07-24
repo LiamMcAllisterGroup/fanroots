@@ -6,7 +6,13 @@
 # Those people should feel free to use/modify this code as they see fit.
 # =============================================================================
 
-import concurrent
+try:
+    import joblib
+except ImportError:
+    import sys
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "joblib"])
+    import joblib
 import numbers
 import numpy as np
 import plotly.graph_objects as go
@@ -932,6 +938,52 @@ class BatchOptimizer():
         if serial:
             if self.plotting:
                 self.batch[0]._display_figures()
+            for i, optimizer in enumerate(self.batch):
+                if self.verbosity >= 1:
+                    print(f"Running optimizer #{i}...", end="")
+                    t0 = time.time()
+                optimizer._step(num=num)
+                if self.verbosity >= 1:
+                    t1 = time.time()
+                    print(f" finished in {t1 - t0}s!")
+
+        # run in parallel
+        if not serial:
+            if self.plotting:
+                raise ValueError()
+                self.batch[0]._display_figures()
+
+            def run_and_capture(index_opt):
+                i, opt = index_opt
+                try:
+                    state = opt._step(num=num, return_full_state=True)
+                    return (i, state, None)
+                except Exception as e:
+                    return (i, None, e)
+
+            results = joblib.Parallel(n_jobs=-1)(
+                joblib.delayed(run_and_capture)((i, opt))
+                for i, opt in enumerate(self.batch)
+            )
+
+            for i, state, err in results:
+                if err is None:
+                    self.batch[i].load_state(state)
+                    self.finished[i] = True
+                    if self.verbosity >= 1:
+                        print(f"frac finished = {sum(self.finished)/len(self.finished)}", end='\r')
+                else:
+                    print(f"Task {i} failed with exception: {err}")
+
+        return
+"""
+    def step(self, num=1, serial=False):
+        outputs = []
+
+        # run in series
+        if serial:
+            if self.plotting:
+                self.batch[0]._display_figures()
             for i,optimizer in enumerate(self.batch):
                 if self.verbosity>=1:
                     print(f"Running optimizer #{i}...",end="")
@@ -947,7 +999,7 @@ class BatchOptimizer():
                 raise ValueError()
                 self.batch[0]._display_figures()
 
-            with concurrent.futures.ProcessPoolExecutor() as executor:
+            with concurrent.futures.ProcessPoolExecutor(mp_context=multiprocessing.get_context("fork")) as executor:
                 # submit with index to know which result belongs where
                 futures = {
                     executor.submit(opt._step, num, return_full_state=True): i
@@ -971,3 +1023,4 @@ class BatchOptimizer():
 
         # return status
         return# outputs
+"""
