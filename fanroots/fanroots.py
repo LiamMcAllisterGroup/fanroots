@@ -928,10 +928,10 @@ class BatchOptimizer():
     def get_status(self):
         return [optimizer.get_status() for optimizer in self.batch]
 
-    def optimize(self, serial=False):
-        self.step(num=float('inf'), serial=serial)
+    def optimize(self, serial=False, backend='loky'):
+        self.step(num=float('inf'), serial=serial, backend=backend)
 
-    def step(self, num=1, serial=False):
+    def step(self, num=1, serial=False, backend='loky'):
         outputs = []
 
         # run in series
@@ -953,16 +953,16 @@ class BatchOptimizer():
                 raise ValueError()
                 self.batch[0]._display_figures()
 
-            def run_and_capture(index_opt):
-                i, opt = index_opt
+            def run_and_capture(i):
+                opt = self.batch[i]
                 try:
                     state = opt._step(num=num, return_full_state=True)
                     return (i, state, None)
                 except Exception as e:
                     return (i, None, e)
 
-            results = joblib.Parallel(n_jobs=-1)(
-                joblib.delayed(run_and_capture)((i, opt))
+            results = joblib.Parallel(n_jobs=-1, backend=backend, timeout=None, verbose=0)(
+                joblib.delayed(run_and_capture)(i)
                 for i, opt in enumerate(self.batch)
             )
 
