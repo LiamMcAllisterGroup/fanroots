@@ -6,13 +6,7 @@
 # Those people should feel free to use/modify this code as they see fit.
 # =============================================================================
 
-try:
-    import joblib
-except ImportError:
-    import sys
-    import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "joblib"])
-    import joblib
+import joblib
 import numbers
 import numpy as np
 import plotly.graph_objects as go
