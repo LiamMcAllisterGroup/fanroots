@@ -13,6 +13,9 @@
 
 import numpy as np
 import scipy as sp
+
+import warnings
+import time
     
 def propose_gauss_newton(optimizer):
     """
@@ -70,12 +73,14 @@ def propose_gauss_newton(optimizer):
         J = np.hstack([J_h, J_other])
 
     # compute the step
+    # (solve J.T@J@step = -J.T@F via least squares)
     JTJ = J.T@J
-    
-    # solve J.T@J@step = -J.T@F via least squares
+    JTF = optimizer.grad()
+
     if False:
-        step,res = np.linalg.lstsq(JTJ, -J.T@F, rcond=None)[0:2]
+        step,res = np.linalg.lstsq(JTJ, -JTF, rcond=None)[0:2]
     else:
-        step,res = sp.linalg.lstsq(JTJ, -J.T@F, lapack_driver='gelsy')[0:2]
+        step,res = sp.linalg.lstsq(JTJ, -JTF, lapack_driver='gelsy')[0:2]
+
     cond = np.linalg.cond(JTJ)
     return step, cond
