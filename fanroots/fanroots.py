@@ -13,7 +13,15 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import time
 
+import os
+from pathlib import Path
 import warnings
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    message="A worker stopped while some jobs were given to the executor.*"
+)
+
 
 from lib.util.fan_root.src.step_proposal import newton, gauss_newton, lma, gradient_descent
 from lib.util.fan_root.src.step_size import naive, backtracking_line_search, shrink, ternary
@@ -961,12 +969,32 @@ class BatchOptimizer():
                 raise ValueError()
                 self.batch[0]._display_figures()
 
+            HEARTBEAT_DIR = Path("/tmp/worker_heartbeats")
+            HEARTBEAT_DIR.mkdir(exist_ok=True)
+
             def run_and_capture(i):
                 opt = self.batch[i]
+
+                # write a dummy file, delete it at the end
+                hb_file = HEARTBEAT_DIR / f"task_{i}.txt"
+
+                with open(hb_file, "w") as f:
+                    f.write("START\n")
+                    f.write(f"{time.time()}\n")
+                    f.flush()
+
                 try:
                     state = opt._step(num=num, return_full_state=True)
+                    with open(hb_file, "a") as f:
+                        f.write(f"{time.time()}\n")
+                        f.write("END")
+                        f.flush()
                     return (i, state, None)
                 except Exception as e:
+                    with open(hb_file, "a") as f:
+                        f.write(f"{time.time()}\n")
+                        f.write("EXCEPTION")
+                        f.flush()
                     return (i, None, e)
 
             results = joblib.Parallel(n_jobs=-1, backend=backend, timeout=None, verbose=0)(
@@ -974,6 +1002,26 @@ class BatchOptimizer():
                 for i, opt in enumerate(self.batch)
             )
 
+            # paranoid completion checking
+            # ----------------------------
+            # every file ended
+            for i in range(len(self.batch)):
+                hb_file = HEARTBEAT_DIR / f"task_{i}.txt"
+
+                # ensure the file has an end line
+                with open(hb_file, "r") as f:
+                    ended = False
+                    for line in f:
+                        ended = (line == "END") or (line == "EXCEPTION")
+
+                # delete the file
+                os.remove(hb_file)
+
+            # ensure we have the expected number of outputs
+            assert len(results) == len(self.batch)
+
+            # read outputs
+            # ------------
             for i, state, err in results:
                 if err is None:
                     self.batch[i].load_state(state)
