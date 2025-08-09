@@ -13,6 +13,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import time
 
+import warnings
+
 from lib.util.fan_root.src.step_proposal import newton, gauss_newton, lma, gradient_descent
 from lib.util.fan_root.src.step_size import naive, backtracking_line_search, shrink, ternary
 from lib.util.fan_root.src.step_taking import flop
@@ -478,7 +480,7 @@ class FanRoots:
 
         toc = time.time()
         self._fct_time.append(toc-tic)
-        return out
+        return np.array(out, copy=True, dtype=np.float64, order='C')
 
     def jac(self, x=None, **kwargs):
         """
@@ -503,7 +505,7 @@ class FanRoots:
 
         toc = time.time()
         self._jac_time.append(toc-tic)
-        return out
+        return np.array(out, copy=True, dtype=np.float64, order='C')
 
     def res_norm(self, x=None):
         """
@@ -540,7 +542,19 @@ class FanRoots:
                 J = np.vstack((J.real, J.imag))
                 F = np.concatenate((F.real, F.imag))
 
-            self._grad = J.T@F
+            for attempt in range(5):
+                with warnings.catch_warnings(record=True) as w:
+                    warnings.simplefilter("always")
+                    try:
+                        self._grad = J.T @ F
+                    except FloatingPointError:
+                        self._grad = None
+                if self._grad is not None:
+                    break
+                time.sleep(0.01)  # small wait before retry
+            else:
+                print("Repeated matmul warnings or errors")
+
         return self._grad
 
     # steps
