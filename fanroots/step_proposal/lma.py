@@ -35,7 +35,7 @@ def lma_idk(F, J, lmbda, scaled):
     cond = np.linalg.cond(A)
     return step, cond
 
-def lma(F, J, lmbda, scaled):
+def lma(F, J, JTF, lmbda, scaled):
     """
     **Description:**
     We solve F = 0 using the Levenberg–Marquardt algorithm (LMA), disjoint from
@@ -95,9 +95,9 @@ def lma(F, J, lmbda, scaled):
     # solve (J.T@J + lmbda*L)@step = -J.T@F via least squares
     M = JTJ + lmbda*D
     if False:
-        step,res = np.linalg.lstsq(M, -J.T@F, rcond=None)[0:2]
+        step,res = np.linalg.lstsq(M, -JTF, rcond=None)[0:2]
     else:
-        step,res = sp.linalg.lstsq(M, -J.T@F, lapack_driver='gelsy')[0:2]
+        step,res = sp.linalg.lstsq(M, -JTF, lapack_driver='gelsy')[0:2]
     cond = np.linalg.cond(M)
     return step, cond
     
@@ -156,7 +156,7 @@ def propose_lma(optimizer, lmbda=0, scaled=False):
         J_h = np.hstack([J_h, J_other])
 
     # compute the step
-    step,cond = lma(F_h, J_h, lmbda=lmbda, scaled=scaled)
+    step,cond = lma(F_h, J_h, optimizer.grad(), lmbda=lmbda, scaled=scaled)
 
     return step, cond
 
