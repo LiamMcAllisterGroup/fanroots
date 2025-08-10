@@ -22,6 +22,9 @@ warnings.filterwarnings(
     message="A worker stopped while some jobs were given to the executor.*"
 )
 
+import traceback
+import sys
+
 
 from lib.util.fan_root.src.step_proposal import newton, gauss_newton, lma, gradient_descent
 from lib.util.fan_root.src.step_size import naive, backtracking_line_search, shrink, ternary
@@ -991,6 +994,20 @@ class BatchOptimizer():
                         f.flush()
                     return (i, state, None)
                 except Exception as e:
+                    # get extra details for the exception
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    tb_list = traceback.extract_tb(exc_traceback)
+                    last_frame = tb_list[-1]
+
+                    # attach details to exception object
+                    e.exc_file = last_frame.filename
+                    e.exc_func = last_frame.name
+                    e.exc_lineno = last_frame.lineno
+                    e.exc_line = last_frame.line
+
+                    e.exc_type_name = exc_type.__name__
+                    e.exc_value = exc_value
+
                     with open(hb_file, "a") as f:
                         f.write(f"{time.time()}\n")
                         f.write("EXCEPTION")
@@ -1029,7 +1046,13 @@ class BatchOptimizer():
                     #if self.verbosity >= 1:
                     #    print(f"frac finished = {sum(self.finished)/len(self.finished)}", end='\r')
                 else:
-                    print(f"Task {i} failed with exception: {err}")
+                    print(f"Task {i} failed:")
+                    print(f"  File: {getattr(err, 'exc_file', 'N/A')}")
+                    print(f"  Function: {getattr(err, 'exc_func', 'N/A')}")
+                    print(f"  Line number: {getattr(err, 'exc_lineno', 'N/A')}")
+                    print(f"  Line of code: {getattr(err, 'exc_line', 'N/A')}")
+                    print(f"  Exception type: {getattr(err, 'exc_type_name', type(err).__name__)}")
+                    print(f"  Exception value: {err}")
 
         return
 """
