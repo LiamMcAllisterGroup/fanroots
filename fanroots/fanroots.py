@@ -12,6 +12,8 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import time
+from datetime import datetime
+start_time = datetime.now().strftime('%Y%m%d_%H%M%S')
 
 import os
 from pathlib import Path
@@ -979,7 +981,7 @@ class BatchOptimizer():
                 opt = self.batch[i]
 
                 # write a dummy file, delete it at the end
-                hb_file = HEARTBEAT_DIR / f"task_{i}.txt"
+                hb_file = HEARTBEAT_DIR / f"task_{i}_{start_time}.txt"
 
                 with open(hb_file, "w") as f:
                     f.write("START\n")
@@ -1023,7 +1025,7 @@ class BatchOptimizer():
             # ----------------------------
             # every file ended
             for i in range(len(self.batch)):
-                hb_file = HEARTBEAT_DIR / f"task_{i}.txt"
+                hb_file = HEARTBEAT_DIR / f"task_{i}_{start_time}.txt"
 
                 # ensure the file has an end line
                 with open(hb_file, "r") as f:
