@@ -6,6 +6,7 @@
 # Those people should feel free to use/modify this code as they see fit.
 # =============================================================================
 
+import copy
 import joblib
 import numbers
 import numpy as np
@@ -236,7 +237,65 @@ class FanRoots:
         # initialize cached local information
         self.clear_local_cache()
 
-        # diagnostic information
+        # initialize diagnostic information
+        self.clear_diagnostics()
+
+        # history
+        # -------
+        self.history_level = history_level
+        self.concerning_angle = concerning_angle
+
+        # initialize the other history values
+        self.clear_history()
+
+        # plotting
+        # --------
+        self.plot_condition_num = plot_condition_num
+        self.plotting   = plotting
+        self.plot_names = [
+            "\\sum_i res_i^2",
+            "Step Size",\
+            "delta Heading",
+            "Momentum",
+            "t_1 vs t_0"
+            ]
+        if self.plot_condition_num:
+            self.plot_names.append("Condition #")
+        self.fig        = None
+        self.fig_lines  = None # access to figure lines for easy updates
+
+        # misc/kwargs
+        # -----------
+        self.verbosity = verbosity
+
+    # generic methods
+    # ---------------
+    def __next__(self):
+        """
+        Take a step and then return the status
+        """
+        if self.finished:
+            raise StopIteration()
+
+        return self.step()
+
+    def copy(self):
+        return copy.deepcopy(self)
+
+    # history/init
+    # ------------
+    def clear_local_cache(self):
+        self._fct_val  = None
+        self._jac_val  = None
+        self._condition_number = None
+        self._res_norm = None
+        self._grad     = None
+
+        self.momentum = 1
+        self.finished = False
+        self.success  = None
+
+    def clear_diagnostics(self):
         self.num_steps      = 0
         self.num_flips      = None
         self.num_fct_calls  = 0
@@ -259,18 +318,9 @@ class FanRoots:
         self.step_overestimation= None
         self.last_step_success  = True
 
-        # are we done?
-        self.finished           = False
-        self.success            = None
-
-        # history
-        # -------
-        self.history_level = history_level
-
+    def clear_history(self):
         self.history = []
-        self.concerning_angle = concerning_angle
         self.history_largeangle = []
-        self.plot_condition_num = plot_condition_num
         self.history_conditionnum = []
         self.history_triang  = []
         self.history_kappa   = []
@@ -280,36 +330,6 @@ class FanRoots:
         self.history_successful_step = []
         
         self.history_anc    = []
-
-        # plotting
-        # --------
-        self.plotting   = plotting
-        self.plot_names = [
-            "\\sum_i res_i^2",
-            "Step Size",\
-            "delta Heading",
-            "Momentum",
-            "h_1 vs h_0"
-            ]
-        if self.plot_condition_num:
-            self.plot_names.append("Condition #")
-        self.fig        = None
-        self.fig_lines  = None # access to figure lines for easy updates
-
-        # misc/kwargs
-        # -----------
-        self.verbosity = verbosity
-
-    # generic methods
-    # ---------------
-    def __next__(self):
-        """
-        Take a step and then return the status
-        """
-        if self.finished:
-            raise StopIteration()
-
-        return self.step()
 
     # properties
     # ----------
@@ -324,7 +344,9 @@ class FanRoots:
 
     # status/diagnostics
     # ==================
-    def get_state(self):
+    def get_state(self, deepcopy=False):
+        if deepcopy:
+            return copy.deepcopy(self.__dict__)
         return self.__dict__.copy()
 
     def load_state(self, state):
@@ -438,17 +460,6 @@ class FanRoots:
 
     # core methods
     # ============
-    def clear_local_cache(self):
-        self._fct_val  = None
-        self._jac_val  = None
-        self._condition_number = None
-        self._res_norm = None
-        self._grad     = None
-
-        self.momentum = 1
-        self.finished = False
-        self.success  = None
-
     def kappa_nz(self):
         if self._kappa_nz is None:
             self._kappa_nz = np.nonzero(self.kappa)
@@ -893,8 +904,9 @@ class FanRoots:
 
             # Update scatter plot
             line = self.fig_lines[4][0]
-            line.x = list(line.x) + [self.heights[0]]
-            line.y = list(line.y) + [self.heights[1]]
+            kahlers = self.glsm@self.heights
+            line.x = list(line.x) + [kahlers[0]]
+            line.y = list(line.y) + [kahlers[1]]
             line.text = list(line.text) + [N]
             n = len(line.x)
             line.marker.color = np.linspace(0.3, 1.0, n)
@@ -904,6 +916,58 @@ class FanRoots:
 
             if self.plot_condition_num:
                 self.fig_lines[5][0].y += (self.condition_number(),)
+
+    # misc
+    # ----
+    def swarm(self, N, scale, max_N_misses=100, plotting=None):
+        # output_object
+        _swarm = []
+
+        num_misses = 0
+        while len(_swarm) < N:
+            swarmling = self.copy()
+
+            # generate the new heights
+            new_heights = self.heights + np.random.normal(scale=scale, size=len(self.heights))
+
+            # update the swarmling's variables according to new heights
+            swarmling.heights = new_heights
+            try:
+                # try to make a new fine triangulation
+                swarmling.triang = swarmling.vc.subdivide(swarmling.heights).as_toric()
+                assert swarmling.triang.is_fine()
+            except:
+                # failed... retry
+                num_misses += 1
+                if num_misses > max_N_misses:
+                    raise Exception(f"Tried more than {max_N_misses} to make swarmlings... scale={scale} likely too high")
+                continue
+            swarmling.kappa  = swarmling.triang.intersection_numbers(
+                in_basis=True,
+                pushed_down=True,
+                as_np_array=True
+            )
+            swarmling._kappa_nz   = None
+            swarmling._kappa_vals = None
+
+            # clear caches
+            swarmling.clear_local_cache()
+            swarmling.clear_diagnostics()
+            swarmling.clear_history()
+
+            # save the add the swarmling to the swarm
+            _swarm.append(swarmling)
+
+        if plotting is None:
+            plotting = self.plotting
+
+        _swarm = BatchOptimizer(
+            optimizers = _swarm,
+            plotting = plotting,
+            verbosity = self.verbosity
+        )
+
+        return _swarm
 
 class BatchOptimizer():
     def __init__(self,
