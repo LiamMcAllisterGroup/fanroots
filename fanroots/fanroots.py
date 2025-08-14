@@ -7,13 +7,15 @@
 # =============================================================================
 
 import copy
+from datetime import datetime
 import joblib
 import numbers
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import time
-from datetime import datetime
+import warnings
+
 start_time = datetime.now().strftime('%Y%m%d_%H%M%S')
 
 import os
@@ -44,6 +46,7 @@ class FanRoots:
         tolerance = 1e-4,
         min_step_size = 1e-8,
         growth_demand_timescale = 50,
+        user_halting_fct = None,
         heights0  = None,
         other0    = None,
         triang    = None,
@@ -102,6 +105,8 @@ class FanRoots:
             |fct(h)|_2 < tolerance
         - `growth_demand_timescale`: Halt if no improvement to the residual is
             made in this number of steps.
+        - `user_halting_fct`: A function taking a single argument, the FanRoots
+            class, that halts the optimization if it evaluates True.
         - `heights0`: Starting value of h to use.
         - `others0`: Optional starting value of x to use. If not provided, then
             no x-dependence is assumed.
@@ -177,6 +182,9 @@ class FanRoots:
         self.tolerance     = tolerance**2
         self.min_step_size = min_step_size
         self.growth_demand_timescale = growth_demand_timescale
+
+        # user halting
+        self._user_halting_fct = user_halting_fct
 
         # the vector configuration defining the fan
         self.vc            = vc
@@ -278,6 +286,19 @@ class FanRoots:
             raise StopIteration()
 
         return self.step()
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+
+        for k, v in self.__dict__.items():
+            if k in ("fig", "fig_lines"):
+                setattr(result, k, None)
+            else:
+                setattr(result, k, copy.deepcopy(v, memo))
+
+        return result
 
     def copy(self):
         return copy.deepcopy(self)
@@ -546,7 +567,20 @@ class FanRoots:
         """
         # override with manually input location
         f = self.fct(x)
-        return np.sum(np.square(f.real) + np.square(f.imag))
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always", RuntimeWarning)
+            out = np.sum(np.square(f.real) + np.square(f.imag))
+
+            for warn in w:
+                if issubclass(warn.category, RuntimeWarning):
+                    print("RuntimeWarning caught in res_norm!")
+                    print("f.real:", f.real)
+                    print("f.imag:", f.imag)
+                    print("norm parts:",
+                          np.square(f.real),
+                          np.square(f.imag))
+        return out
 
     def grad(self):
         """
@@ -786,6 +820,12 @@ class FanRoots:
                 self.finished = True
                 self.success  = False
 
+        if (self.finished == False) and\
+            (self._user_halting_fct is not None) and\
+            (self._user_halting_fct(self) == True):
+            # the optimzer wasn't naturally done but it was halted by user
+            self.finished = True
+
         # plot status
         if self.plotting:
             self._update_plots()
@@ -843,15 +883,26 @@ class FanRoots:
         raw_fig = go.FigureWidget(make_subplots(rows=1, 
                                                 cols=len(self.plot_names),
                                                 subplot_titles=self.plot_names))
+        
+        # set size
+        raw_fig.update_layout(
+            showlegend=False,
+            width=200*len(self.plot_names),
+            height=400
+        )
+
         self.fig = {'fig': raw_fig, 'displayed':False}
         self.fig['fig'].update_layout(showlegend=False)
 
         if add_traces:
             self._add_traces()
 
-    def _add_traces(self):
+    def _add_traces(self, num=None):
         # add traces (empty initially)
         self.fig_lines = []
+
+        if num is not None:
+            num = str(num)
 
         for i, name in enumerate(self.plot_names):
             self.fig_lines.append([])
@@ -861,17 +912,19 @@ class FanRoots:
                 line = self.fig['fig'].add_trace(
                     go.Scattergl(x=[], y=[], text=[], mode='lines+markers',
                         marker=dict(
+                            size=3,
                             color=[],  # This sets color gradient
                             colorscale='Greys',
                             cmin=0,
                             cmax=1,
-                        )
+                        ),
+                        name = num
                     ),
                     row=1, col=1+i  # Plotly indexing starts at 1
                 )['data'][-1]  # Store reference to the last added trace
             else:
                 line = self.fig['fig'].add_trace(
-                    go.Scattergl(y=[], mode='lines', line=dict(color='black'), name=name),
+                    go.Scattergl(y=[], mode='lines', line=dict(color='black'), name=num),
                     row=1, col=1+i  # Plotly indexing starts at 1
                 )['data'][-1]  # Store reference to the last added trace
 
@@ -881,7 +934,7 @@ class FanRoots:
             if i==1:
                 # extra trace for step size... the proposed step size...
                 line = self.fig['fig'].add_trace(
-                    go.Scattergl(y=[], mode='lines', line=dict(color='black', dash='dash'), name='Proposed'),
+                    go.Scattergl(y=[], mode='lines', line=dict(color='black', dash='dash'), name=num + ' Proposed'),
                     row=1, col=1+i  # Plotly indexing starts at 1
                 )['data'][-1]  # Store reference to the last added trace
                 self.fig_lines[-1].append(line)
@@ -912,9 +965,9 @@ class FanRoots:
 
             # Update scatter plot
             line = self.fig_lines[4][0]
-            kahlers = self.glsm@self.heights
-            line.x = list(line.x) + [kahlers[0]]
-            line.y = list(line.y) + [kahlers[1]]
+            kahler = self.kahler
+            line.x = list(line.x) + [kahler[0]]
+            line.y = list(line.y) + [kahler[1]]
             line.text = list(line.text) + [N]
             n = len(line.x)
             line.marker.color = np.linspace(0.3, 1.0, n)
@@ -927,7 +980,11 @@ class FanRoots:
 
     # misc
     # ----
-    def swarm(self, N, scale, max_N_misses=100, plotting=None):
+    def swarm(self, N, scale, max_N_misses=100, plotting=None, seed=None):
+        if seed is None:
+            seed = int(datetime.now().timestamp())
+        rng = np.random.default_rng(seed=seed)
+
         # output_object
         _swarm = []
 
@@ -936,7 +993,7 @@ class FanRoots:
             swarmling = self.copy()
 
             # generate the new heights
-            new_heights = self.heights + np.random.normal(scale=scale, size=len(self.heights))
+            new_heights = self.heights + rng.normal(scale=scale, size=len(self.heights))
 
             # update the swarmling's variables according to new heights
             swarmling.heights = new_heights
@@ -1004,11 +1061,11 @@ class BatchOptimizer():
                 optimizer.fig = None
 
             # create new figures
-            optimizers[0]._create_figures(add_traces=True)
-            for optimizer in optimizers[1:]:
+            optimizers[0]._create_figures(add_traces=False)
+            for i, optimizer in enumerate(optimizers):
                 time.sleep(0.08)
                 optimizer.fig = optimizers[0].fig
-                optimizer._add_traces()
+                optimizer._add_traces(num=i)
 
     def __getitem__(self, index):
         if isinstance(index, int):
