@@ -912,11 +912,11 @@ class FanRoots:
                 line = self.fig['fig'].add_trace(
                     go.Scattergl(x=[], y=[], text=[], mode='lines+markers',
                         marker=dict(
-                            size=3,
-                            color=[],  # This sets color gradient
-                            colorscale='Greys',
-                            cmin=0,
-                            cmax=1,
+                            size=6,
+                            #color=[],  # This sets color gradient
+                            #colorscale='Greys',
+                            #cmin=0,
+                            #cmax=1,
                         ),
                         name = num
                     ),
@@ -970,10 +970,15 @@ class FanRoots:
             line.y = list(line.y) + [kahler[1]]
             line.text = list(line.text) + [N]
             n = len(line.x)
-            line.marker.color = np.linspace(0.3, 1.0, n)
+            #line.marker.color = np.linspace(0.3, 1.0, n)
+            line.marker.opacity = np.linspace(0.05, 1.0, n)
             if self.finished:
                 if not self.success:
                     line.marker.opacity = 0
+                else:
+                    opacity = np.zeros(n)
+                    opacity[-1] = 1
+                    line.marker.opacity = opacity
 
             if self.plot_condition_num:
                 self.fig_lines[5][0].y += (self.condition_number(),)
