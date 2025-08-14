@@ -504,7 +504,11 @@ class FanRoots:
 
         toc = time.time()
         self._fct_time.append(toc-tic)
-        return np.array(out, copy=True, dtype=np.float64, order='C')
+        if isinstance(out, tuple):
+            out = tuple([np.array(f_i, copy=True, order='C') for f_i in out])
+        else:
+            out = np.array(out, copy=True, order='C')
+        return out
 
     def jac(self, x=None, **kwargs):
         """
@@ -529,7 +533,11 @@ class FanRoots:
 
         toc = time.time()
         self._jac_time.append(toc-tic)
-        return np.array(out, copy=True, dtype=np.float64, order='C')
+        if isinstance(out, tuple):
+            out = tuple([np.array(J_i, copy=True, order='C') for J_i in out])
+        else:
+            out = np.array(out, copy=True, order='C')
+        return out
 
     def res_norm(self, x=None):
         """
