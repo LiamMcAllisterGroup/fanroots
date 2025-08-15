@@ -13,6 +13,11 @@ import numbers
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from plotly.validator_cache import ValidatorCache
+
+SymbolValidator = ValidatorCache.get_validator("scatter.marker", "symbol")
+plotly_symbols = SymbolValidator.values
+
 import time
 import warnings
 
@@ -45,7 +50,7 @@ class FanRoots:
         jac: "Callable",
         tolerance = 1e-4,
         min_step_size = 1e-8,
-        growth_demand_timescale = 50,
+        growth_demand_timescale = 100,
         user_halting_fct = None,
         heights0  = None,
         other0    = None,
@@ -103,8 +108,8 @@ class FanRoots:
             gradient descent (if lmbda->inf).
         - `tolerance`: The tolerance to use. Accept a solution if
             |fct(h)|_2 < tolerance
-        - `growth_demand_timescale`: Halt if no improvement to the residual is
-            made in this number of steps.
+        - `growth_demand_timescale`: Halt if residual doesn't decrease by 50%
+            after this number of steps.
         - `user_halting_fct`: A function taking a single argument, the FanRoots
             class, that halts the optimization if it evaluates True.
         - `heights0`: Starting value of h to use.
@@ -807,7 +812,7 @@ class FanRoots:
         self.history_res_norm.append(self.res_norm())
 
         if (len(self.history_res_norm) >= self.growth_demand_timescale) and\
-            self.history_res_norm[-self.growth_demand_timescale] <= self.history_res_norm[-1]:
+            0.50*self.history_res_norm[-self.growth_demand_timescale] <= self.history_res_norm[-1]:
             # did not see growthover the demanded timescale
             self.finished = True
             self.success = False
@@ -902,7 +907,9 @@ class FanRoots:
         self.fig_lines = []
 
         if num is not None:
-            num = str(num)
+            num_str = str(num)
+        else:
+            num_str = None
 
         for i, name in enumerate(self.plot_names):
             self.fig_lines.append([])
@@ -913,18 +920,20 @@ class FanRoots:
                     go.Scattergl(x=[], y=[], text=[], mode='lines+markers',
                         marker=dict(
                             size=6,
+                            symbol=(num if num is None else (num%(len(plotly_symbols)//3))),
                             #color=[],  # This sets color gradient
                             #colorscale='Greys',
                             #cmin=0,
                             #cmax=1,
                         ),
-                        name = num
+                        line=dict(width=1),
+                        name = num_str
                     ),
                     row=1, col=1+i  # Plotly indexing starts at 1
                 )['data'][-1]  # Store reference to the last added trace
             else:
                 line = self.fig['fig'].add_trace(
-                    go.Scattergl(y=[], mode='lines', line=dict(color='black'), name=num),
+                    go.Scattergl(y=[], mode='lines', line=dict(color='black'), name=num_str),
                     row=1, col=1+i  # Plotly indexing starts at 1
                 )['data'][-1]  # Store reference to the last added trace
 
@@ -934,7 +943,7 @@ class FanRoots:
             if i==1:
                 # extra trace for step size... the proposed step size...
                 line = self.fig['fig'].add_trace(
-                    go.Scattergl(y=[], mode='lines', line=dict(color='black', dash='dash'), name=num + ' Proposed'),
+                    go.Scattergl(y=[], mode='lines', line=dict(color='black', dash='dash'), name=num_str + ' Proposed'),
                     row=1, col=1+i  # Plotly indexing starts at 1
                 )['data'][-1]  # Store reference to the last added trace
                 self.fig_lines[-1].append(line)
