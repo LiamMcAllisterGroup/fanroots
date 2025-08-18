@@ -12,6 +12,7 @@
 # -----------------------------------------------------------------------------
 
 import numpy as np
+import scipy as sp
 
 def propose_newton(optimizer):
     """
@@ -64,7 +65,8 @@ def propose_newton(optimizer):
         J_h = np.hstack([J_h, J_other])
 
     # solve via least squares
-    step,res = np.linalg.lstsq(J_h, -F_h, rcond=None)[0:2]
+    #step,res = np.linalg.lstsq(J_h, -F_h, rcond=None)[0:2]
+    step,res = sp.linalg.lstsq(J_h, -F_h, lapack_driver='gelsy')[0:2]
     cond = np.linalg.cond(J_h)
     return step, cond
 

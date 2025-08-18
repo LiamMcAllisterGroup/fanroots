@@ -56,7 +56,7 @@ class FanRoots:
         other0    = None,
         triang    = None,
         kappa     = None,
-        step_proposal        = "gauss_newton",
+        step_proposal        = "newton",
         step_size_optimizer  = "shrink",
         step_taking_method   = "flop",
         step_taking_schedule = None,

@@ -51,6 +51,7 @@ def propose_gauss_newton(optimizer):
         heights, then we concatenate the step in these parameters.
     - `cond`: The condition number arising in the computation.
     """
+    raise Exception("This is actually identical to Newton's method but slower... DON'T USE")
     # fetch the value of the function of interest F (and its Jacobian, J)
     F = optimizer.fct()
     J_h = optimizer.jac()
