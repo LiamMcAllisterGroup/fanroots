@@ -50,7 +50,7 @@ class FanRoots:
         jac: "Callable",
         tolerance = 1e-4,
         min_step_size = 1e-8,
-        growth_demand_timescale = 100,
+        growth_demand_timescale = float('inf'),
         user_halting_fct = None,
         heights0  = None,
         other0    = None,
@@ -318,6 +318,7 @@ class FanRoots:
         self._grad     = None
 
         self.momentum = 1
+        self.finished_reason = "N/A"
         self.finished = False
         self.success  = None
 
@@ -391,6 +392,7 @@ class FanRoots:
 
         # tolerance/completion
         status['finished']  = self.finished
+        status['finished_reason'] = self.finished_reason
         status['res_norm']  = self.res_norm()
         status['tolerance'] = self.tolerance
         status['learning_rate'] = self.learning_rate
@@ -596,9 +598,7 @@ class FanRoots:
 
         This is easy:
             grad_i = d_i 0.5 * \\sum_j F_j(x)^2.
-                   = \\sum_j r_j (d_i F_j(x))
-                   = \\sum_j f(x)_j (d_i F(x)_j)
-                   = \\sum_j F(x)_j jac_ji
+                   = \\sum_j F(x)_j (d_i F(x)_j)
                    = jac.T @ F(x)
         """
         if self._grad is None:
@@ -813,15 +813,18 @@ class FanRoots:
 
         if (len(self.history_res_norm) >= self.growth_demand_timescale) and\
             0.50*self.history_res_norm[-self.growth_demand_timescale] <= self.history_res_norm[-1]:
-            # did not see growthover the demanded timescale
+            # did not see growth over the demanded timescale
+            self.finished_reason = "didn't meet demanded timescale"
             self.finished = True
             self.success = False
         else:
             # compute the norm of the residuals, check if we're done
             if self.res_norm()<self.tolerance:
+                self.finished_reason = "converged"
                 self.finished = True
                 self.success  = True
             elif not self.last_step_success:
+                self.finished_reason = "last step failed"
                 self.finished = True
                 self.success  = False
 
