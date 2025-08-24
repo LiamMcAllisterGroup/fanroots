@@ -31,7 +31,7 @@ def propose_newton(optimizer):
 
     This can be derived as:
         F(h+step_h, x+step_x) = F(h, x) + J(h, x)@[step_h, step_x] + ...
-    Then, to linear order, F(h, x) has a root if
+    Then, to linear order, F has a root at h+step_h, x+step_x if
         J(h, x)@[step_h, step_x] = -F(h, x).
     This is simple to solve for via least squares:
         step = lstsq(J, -F).
