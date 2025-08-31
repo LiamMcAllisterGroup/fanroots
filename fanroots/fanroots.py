@@ -17,6 +17,7 @@ from plotly.validator_cache import ValidatorCache
 
 SymbolValidator = ValidatorCache.get_validator("scatter.marker", "symbol")
 plotly_symbols = SymbolValidator.values
+plotly_symbols = [i for i in plotly_symbols if isinstance(i,int) and i<100]
 
 import time
 import warnings
@@ -923,7 +924,7 @@ class FanRoots:
                     go.Scattergl(x=[], y=[], text=[], mode='lines+markers',
                         marker=dict(
                             size=6,
-                            symbol=(num if num is None else (num%(len(plotly_symbols)//3))),
+                            symbol=(num if num is None else (num%len(plotly_symbols))),
                             #color=[],  # This sets color gradient
                             #colorscale='Greys',
                             #cmin=0,
