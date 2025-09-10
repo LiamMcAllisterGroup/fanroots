@@ -580,14 +580,25 @@ class FanRoots:
             warnings.simplefilter("always", RuntimeWarning)
             out = np.sum(np.square(f.real) + np.square(f.imag))
 
+            halt = False
             for warn in w:
                 if issubclass(warn.category, RuntimeWarning):
+                    halt = True
                     print("RuntimeWarning caught in res_norm!")
                     print("f.real:", f.real)
                     print("f.imag:", f.imag)
                     print("norm parts:",
                           np.square(f.real),
                           np.square(f.imag))
+
+            if halt:
+                # ensure we're done
+                self.finished_reason = "RunetimeWarning in res_norm"
+                self.finished = True
+                self.success  = False
+                self.last_step_success = False
+
+
         return out
 
     def grad(self):
