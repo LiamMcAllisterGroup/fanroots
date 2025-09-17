@@ -512,7 +512,9 @@ class FanRoots:
 
     def fct(self, x=None, **kwargs):
         """
-        Evaluate the function at the current location
+        Evaluate the function at the current location.
+
+        If you set a location, then evaluate the current function at the set location.
         """
         tic = time.time()
         
@@ -819,6 +821,7 @@ class FanRoots:
         self.triang  = triang
         self.kappa   = kappa
         self.anc     = anc
+        assert min(triang.secondary_cone().hyperplanes()@h)>0
 
         # update residual norm in history
         self.history_res_norm.append(self.res_norm())
@@ -924,7 +927,7 @@ class FanRoots:
         if num is not None:
             num_str = str(num)
         else:
-            num_str = None
+            num_str = ""
 
         for i, name in enumerate(self.plot_names):
             self.fig_lines.append([])
@@ -1009,7 +1012,7 @@ class FanRoots:
 
     # misc
     # ----
-    def swarm(self, N, scale, max_N_misses=100, plotting=None, seed=None):
+    def swarm(self, N, scale, max_N_misses=100, plotting=None, seed=None, verbosity=0):
         if seed is None:
             seed = int(datetime.now().timestamp())
         rng = np.random.default_rng(seed=seed)
@@ -1018,8 +1021,10 @@ class FanRoots:
         _swarm = []
 
         num_misses = 0
+        swarmling = self.copy()
         while len(_swarm) < N:
-            swarmling = self.copy()
+            if verbosity > 0:
+                print(len(_swarm), N)
 
             # generate the new heights
             new_heights = self.heights + rng.normal(scale=scale, size=len(self.heights))
@@ -1051,6 +1056,9 @@ class FanRoots:
 
             # save the add the swarmling to the swarm
             _swarm.append(swarmling)
+
+            # prep the next swarmling
+            swarmling = self.copy()
 
         if plotting is None:
             plotting = self.plotting
