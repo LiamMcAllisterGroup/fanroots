@@ -14,6 +14,8 @@
 import numpy as np
 import scipy as sp
 
+import warnings
+
 def lma_idk(F, J, lmbda, scaled):
     """
     Compute Levenberg-Marquardt step using augmented least squares formulation
@@ -35,6 +37,7 @@ def lma_idk(F, J, lmbda, scaled):
     cond = np.linalg.cond(A)
     return step, cond
 
+warnings.warn("lambda setting isn't correct yet... must be dynamic")
 def lma(F, J, JTF, lmbda, scaled):
     """
     **Description:**
@@ -85,7 +88,6 @@ def lma(F, J, JTF, lmbda, scaled):
     **Returns:**
     - `step`: The proposed step to take.
     """
-    raise NotImplementedError("lambda setting isn't correct yet... must be dynamic")
     JTJ = J.T@J
     if scaled:
         D = np.diag(np.diag(JTJ))
