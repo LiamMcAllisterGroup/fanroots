@@ -822,7 +822,8 @@ class FanRoots:
         self.kappa   = kappa
         self.anc     = anc
         assert triang.is_fine()
-        assert min(triang.secondary_cone().hyperplanes()@h)>0
+        if not min(triang.secondary_cone().hyperplanes()@h)>0:
+            raise ValueError(f"secondary cone didn't contain heights... violation={min(triang.secondary_cone().hyperplanes()@h)}")
 
         # update residual norm in history
         self.history_res_norm.append(self.res_norm())
