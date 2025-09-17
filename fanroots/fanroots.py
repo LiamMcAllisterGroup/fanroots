@@ -821,6 +821,7 @@ class FanRoots:
         self.triang  = triang
         self.kappa   = kappa
         self.anc     = anc
+        assert triang.is_fine()
         assert min(triang.secondary_cone().hyperplanes()@h)>0
 
         # update residual norm in history
