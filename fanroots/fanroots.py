@@ -822,8 +822,18 @@ class FanRoots:
         self.kappa   = kappa
         self.anc     = anc
         assert triang.is_fine()
-        if not min(triang.secondary_cone().hyperplanes()@h)>0:
-            raise ValueError(f"secondary cone didn't contain heights... violation={min(triang.secondary_cone().hyperplanes()@h)}")
+        dists = triang.secondary_cone().hyperplanes()@h
+        if not min(dists)>0:
+            # we violated a hyperplane constraint
+            problematic = np.where(dists<1e-8)[0]
+
+            # multiple hyperplane constraints :( quit
+            if len(problematic) > 1:
+                raise ValueError(f"secondary cone didn't contain heights... violation={min(dists)}; {len(problematic)} constraints violated")
+            # a SINGLE hyperplane constraint - push off the wall by a small amount
+            else:
+                n = triang.secondary_cone().hyperplanes()[problematic[0]]
+                self.heights = self.heights + 1e-8*n/np.linalg.norm(n)
 
         # update residual norm in history
         self.history_res_norm.append(self.res_norm())
