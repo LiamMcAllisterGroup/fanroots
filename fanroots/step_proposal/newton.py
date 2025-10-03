@@ -67,8 +67,8 @@ def propose_newton(optimizer):
     # solve via least squares
     #step,res = np.linalg.lstsq(J_h, -F_h, rcond=None)[0:2]
     step,res = sp.linalg.lstsq(J_h, -F_h, lapack_driver='gelsy')[0:2]
-    cond = np.linalg.cond(J_h)
-    return step, cond
+    #cond = np.linalg.cond(J_h)
+    return step#, cond
 
     #if not optimizer.only_heights:
     #    h11 = len(optimizer.heights)

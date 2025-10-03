@@ -42,7 +42,7 @@ def propose_gradient_descent(optimizer):
     """
     # compute the step
     step = -optimizer.grad()
-    return step, None
+    return step#, None
 
     #if not optimizer.only_heights:
     #    h11 = len(optimizer.heights)

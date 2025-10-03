@@ -34,8 +34,8 @@ def lma_idk(F, J, lmbda, scaled):
 
     # Solve the least squares problem ||A s - b||^2
     step, *_ = np.linalg.lstsq(A, b, rcond=None)
-    cond = np.linalg.cond(A)
-    return step, cond
+    #cond = np.linalg.cond(A)
+    return step#, cond
 
 warnings.warn("lambda setting isn't correct yet... must be dynamic")
 def lma(F, J, JTF, lmbda, scaled):
@@ -98,10 +98,13 @@ def lma(F, J, JTF, lmbda, scaled):
     M = JTJ + lmbda*D
     if False:
         step,res = np.linalg.lstsq(M, -JTF, rcond=None)[0:2]
-    else:
+    elif False:
         step,res = sp.linalg.lstsq(M, -JTF, lapack_driver='gelsy')[0:2]
-    cond = np.linalg.cond(M)
-    return step, cond
+    else:
+        step = np.linalg.solve(M, -JTF)
+        res  = np.sum((-JTF - M @ step)**2, axis=0, keepdims=True)
+    #cond = np.linalg.cond(M)
+    return step#, cond
     
 def propose_lma(optimizer, lmbda=0, scaled=False):
     """
@@ -158,9 +161,10 @@ def propose_lma(optimizer, lmbda=0, scaled=False):
         J_h = np.hstack([J_h, J_other])
 
     # compute the step
-    step,cond = lma(F_h, J_h, optimizer.grad(), lmbda=lmbda, scaled=scaled)
+    #step, cond = lma(F_h, J_h, optimizer.grad(), lmbda=lmbda, scaled=scaled)
+    step = lma(F_h, J_h, optimizer.grad(), lmbda=lmbda, scaled=scaled)
 
-    return step, cond
+    return step#, cond
 
     #if not optimizer.only_heights:
     #    h11 = len(optimizer.heights)

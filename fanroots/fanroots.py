@@ -713,8 +713,9 @@ class FanRoots:
             if self.verbosity >= 1:
                 print("Deciding upon a step to propose...")
             tic = time.time()
-            step, cond = self.compute_next_step()
-            self._condition_number = cond
+            #step, cond = self.compute_next_step()
+            step = self.compute_next_step()
+            #self._condition_number = cond
             if self.only_heights:
                 step_t = step
             else:
@@ -899,12 +900,13 @@ class FanRoots:
         Compute the next step and, optionally, optimize the size
         (assumed scaled by alpha \\in (0,1])
         """
-        naive_step, cond  = self.step_proposal(self)
+        #naive_step, cond  = self.step_proposal(self)
+        naive_step  = self.step_proposal(self)
         scaled_step = self.momentum * self.learning_rate * naive_step
 
         self.alpha  = self.step_size_optimizer(self, scaled_step)
         self.proposed_step   = self.alpha * scaled_step
-        return self.proposed_step, cond
+        return self.proposed_step#, cond
 
     def update_step_taking_method(self):
         for i, (criteria, method) in enumerate(self.step_taking_schedule):

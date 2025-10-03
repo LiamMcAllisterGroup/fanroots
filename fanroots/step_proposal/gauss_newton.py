@@ -83,5 +83,5 @@ def propose_gauss_newton(optimizer):
     else:
         step,res = sp.linalg.lstsq(JTJ, -JTF, lapack_driver='gelsy')[0:2]
 
-    cond = np.linalg.cond(JTJ)
-    return step, cond
+    #cond = np.linalg.cond(JTJ)
+    return step#, cond
