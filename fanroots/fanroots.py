@@ -9,7 +9,7 @@
 import copy
 from datetime import datetime
 import joblib
-import numbers
+#import numbers
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -73,7 +73,7 @@ class FanRoots:
         max_momentum: float  = 1,
         momentum_penalty: float = 0.5,
         momentum_reward: float = 1.5,
-        plot_condition_num: bool = True,
+        plot_condition_num: bool = False,
         concerning_angle: float = np.pi/2,
         history_level: int = 0,
         plotting: bool       = False,
@@ -677,7 +677,7 @@ class FanRoots:
             self.fig['displayed'] = False
         return out
 
-    def _step(self, num=1, return_full_state=False):
+    def _step(self, num=1, return_full_state=False, paranoid=False):
         """
         Actual step computation.
         """
@@ -834,19 +834,20 @@ class FanRoots:
             self.triang  = triang
             self.kappa   = kappa
             self.anc     = anc
-            assert triang.is_fine()
-            dists = triang.secondary_cone().hyperplanes()@h
-            if not min(dists)>0:
-                # we violated a hyperplane constraint
-                problematic = np.where(dists<1e-8)[0]
+            if paranoid:
+                assert triang.is_fine()
+                dists = triang.secondary_cone().hyperplanes()@h
+                if not min(dists)>0:
+                    # we violated a hyperplane constraint
+                    problematic = np.where(dists<1e-8)[0]
 
-                # multiple hyperplane constraints :( quit
-                if len(problematic) > 1:
-                    raise ValueError(f"secondary cone didn't contain heights... violation={min(dists)}; {len(problematic)} constraints violated")
-                # a SINGLE hyperplane constraint - push off the wall by a small amount
-                else:
-                    n = triang.secondary_cone().hyperplanes()[problematic[0]]
-                    self.heights = self.heights + 1e-8*n/np.linalg.norm(n)
+                    # multiple hyperplane constraints :( quit
+                    if len(problematic) > 1:
+                        raise ValueError(f"secondary cone didn't contain heights... violation={min(dists)}; {len(problematic)} constraints violated")
+                    # a SINGLE hyperplane constraint - push off the wall by a small amount
+                    else:
+                        n = triang.secondary_cone().hyperplanes()[problematic[0]]
+                        self.heights = self.heights + 1e-8*n/np.linalg.norm(n)
 
             # update residual norm in history
             self.history_res_norm.append(self.res_norm())
