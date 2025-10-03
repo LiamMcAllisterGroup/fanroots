@@ -41,6 +41,12 @@ from lib.util.fan_root.src.step_proposal import newton, gauss_newton, lma, gradi
 from lib.util.fan_root.src.step_size import naive, backtracking_line_search, shrink, ternary
 from lib.util.fan_root.src.step_taking import flop
 
+class ResNormError(Exception):
+    """
+    Raised when residual norm computation fails (overflow).
+    """
+    pass
+
 def always_true(*args, **kwargs):
     return True
 
@@ -249,7 +255,7 @@ class FanRoots:
         self._kappa_vals = None
 
         # initialize cached local information
-        self.clear_local_cache()
+        self.clear_local_cache(clear_momentum=True, clear_finished_state=True)
 
         # initialize diagnostic information
         self.clear_diagnostics()
@@ -311,17 +317,23 @@ class FanRoots:
 
     # history/init
     # ------------
-    def clear_local_cache(self):
+    def clear_local_cache(self,
+        clear_momentum=False,
+        clear_finished_state=False
+    ):
         self._fct_val  = None
         self._jac_val  = None
         self._condition_number = None
         self._res_norm = None
         self._grad     = None
 
-        self.momentum = 1
-        self.finished_reason = "N/A"
-        self.finished = False
-        self.success  = None
+        if clear_momentum:
+            self.momentum = 1
+
+        if clear_finished_state:
+            self.finished_reason = "N/A"
+            self.finished = False
+            self.success  = None
 
     def clear_diagnostics(self):
         self.num_steps      = 0
@@ -575,31 +587,30 @@ class FanRoots:
         For checking convergence, we monitor the sum of squared residuals.
         For root finding, the residual is just the function itself.
         """
-        # override with manually input location
-        f = self.fct(x)
-
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always", RuntimeWarning)
-            out = np.sum(np.square(f.real) + np.square(f.imag))
 
-            halt = False
+            # vvvv FUNCTION CALL vvvv
+            # override with manually input location
+            f = self.fct(x)
+            out = np.sum(np.square(f.real) + np.square(f.imag))
+            # ^^^^ FUNCTION CALL ^^^^
+
             for warn in w:
                 if issubclass(warn.category, RuntimeWarning):
-                    halt = True
-                    print("RuntimeWarning caught in res_norm!")
-                    print("f.real:", f.real)
-                    print("f.imag:", f.imag)
-                    print("norm parts:",
-                          np.square(f.real),
-                          np.square(f.imag))
+                    # set flags indicating that we've halted and why
+                    self.finished_reason = "RuntimeWarning in res_norm"
+                    self.finished = True
+                    self.success  = False
+                    self.last_step_success = False
 
-            if halt:
-                # ensure we're done
-                self.finished_reason = "RunetimeWarning in res_norm"
-                self.finished = True
-                self.success  = False
-                self.last_step_success = False
+                    # construct a specialized warning to raise
+                    msg =   "RuntimeWarning caught in res_norm!\n"
+                    msg += f"f.real: {f.real}\n"
+                    msg += f"f.imag: {f.imag}\n"
+                    msg += f"norm parts: {np.square(f.real), np.square(f.imag)}"
 
+                    raise ResNormError(msg)
 
         return out
 
@@ -697,169 +708,175 @@ class FanRoots:
                 out = self.get_status()
             return out
 
-        # not done - compute next step
-        if self.verbosity >= 1:
-            print("Deciding upon a step to propose...")
-        tic = time.time()
-        step, cond = self.compute_next_step()
-        self._condition_number = cond
-        if self.only_heights:
-            step_t = step
-        else:
-            step_t     = step[:self.num_vecs]
-            step_other = step[self.num_vecs:]
-        toc = time.time()
-        self._step_proposal_time.append(toc-tic)
-
-        # attempt the step
-        # (update step taking method if necessary)
-        self.update_step_taking_method()
-
-        if self.verbosity == 1:
-            print("Attempting the step...")
-        elif self.verbosity > 1:
-            print(f"Attempting the step from x={self.x()} to x+{step}...")
-        tic = time.time()
-        success, h, triang, kappa, anc = self.step_taking_method(self, step_t)
-        if not self.only_heights:
-            other = self.other + step_other*anc['step_scaling']
-        else:
-            other = None
-
-        # check the step angle to ensure it wasn't too large
-        prev_heading = self.heading
-        heading      = h-self.heights
-        heading_norm = np.linalg.norm(heading)
-        if heading_norm > 0:
-            heading /= heading_norm
-
-        if prev_heading is not None:
-            delta_heading = np.dot(heading, prev_heading)
-            delta_heading = np.arccos(np.clip(delta_heading, -1.0, 1.0))  # avoid numerical issues
-        else:
-            delta_heading = None
-
-        #if (delta_heading is not None) and (delta_heading>0.9*np.pi):
-        #    print(f"DANGEROUS CHANGE IN HEADING OF {delta_heading}")
-
-        # update info
-        self.num_steps  += 1
-        if 'num_flips' in anc:
-            if self.num_flips is None:
-                self.num_flips = anc['num_flips']
+        try:
+            # not done - compute next step
+            if self.verbosity >= 1:
+                print("Deciding upon a step to propose...")
+            tic = time.time()
+            step, cond = self.compute_next_step()
+            self._condition_number = cond
+            if self.only_heights:
+                step_t = step
             else:
-                self.num_flips += anc['num_flips']
-        else:
-            if self.num_flips is not None:
-                print('performing a non-flip step after flip steps...')
-                print('spoils the num_flips tracker...')
-                self.num_flips = None
-        self._kappa_nz   = None
-        self._kappa_vals = None
-        toc = time.time()
-        self._step_taking_time.append(toc-tic)
-        if self.verbosity >= 1:
-            if success:
-                print("Successful!")
+                step_t     = step[:self.num_vecs]
+                step_other = step[self.num_vecs:]
+            toc = time.time()
+            self._step_proposal_time.append(toc-tic)
+
+            # attempt the step
+            # (update step taking method if necessary)
+            self.update_step_taking_method()
+
+            if self.verbosity == 1:
+                print("Attempting the step...")
+            elif self.verbosity > 1:
+                print(f"Attempting the step from x={self.x()} to x+{step}...")
+            tic = time.time()
+            success, h, triang, kappa, anc = self.step_taking_method(self, step_t)
+            if not self.only_heights:
+                other = self.other + step_other*anc['step_scaling']
             else:
-                print("Not successful :(")
+                other = None
 
-        # clear the cache
-        self.clear_local_cache()
+            # check the step angle to ensure it wasn't too large
+            prev_heading = self.heading
+            heading      = h-self.heights
+            heading_norm = np.linalg.norm(heading)
+            if heading_norm > 0:
+                heading /= heading_norm
 
-        # diagnostics for the step
-        # ------------------------
-        # compute the step size, heading
-        self.last_proposal_size = np.linalg.norm(step_t)
-        self.last_step_size     = np.linalg.norm(h-self.heights)
-        if self.last_step_size == 0:
-            self.step_overestimation = float('inf')
-        else:
-            self.step_overestimation = self.last_proposal_size/self.last_step_size
-        self.prev_heading = prev_heading
-        self.heading      = heading
-        self.delta_heading= delta_heading
-
-        # momentum
-        if self.use_momentum:
-            if self.step_overestimation > 2:
-                self.momentum = max(
-                    self.min_momentum,
-                    self.momentum_penalty*self.momentum)
-            elif self.step_overestimation < 1.01:
-                self.momentum = min(
-                    self.max_momentum,
-                    self.momentum_reward*self.momentum)
-
-        # record the history
-        if self.history_level >= 1:
-            # record the current parameters
-            self.history.append(self.x())
-
-        if (self.delta_heading is not None) and \
-            (self.delta_heading >= self.concerning_angle):
-            # record steps with large changes in angle
-            self.history_largeangle.append(self.x())
-
-        if self.history_level >= 2:
-            # also record the step proposals and whether or not they were
-            # successful
-            self.history_proposal.append(step)
-            self.history_successful_step.append(success)
-        
-        if self.history_level >= 2:
-            # also record the triangulation, intersection numbers, and
-            # anciliary data
-            self.history_triang.append(triang)
-            self.history_kappa.append(kappa)
-            self.history_anc.append(anc)
-
-        # update
-        self.last_step_success = success
-        self.heights = h
-        self.other   = other
-        self.triang  = triang
-        self.kappa   = kappa
-        self.anc     = anc
-        assert triang.is_fine()
-        dists = triang.secondary_cone().hyperplanes()@h
-        if not min(dists)>0:
-            # we violated a hyperplane constraint
-            problematic = np.where(dists<1e-8)[0]
-
-            # multiple hyperplane constraints :( quit
-            if len(problematic) > 1:
-                raise ValueError(f"secondary cone didn't contain heights... violation={min(dists)}; {len(problematic)} constraints violated")
-            # a SINGLE hyperplane constraint - push off the wall by a small amount
+            if prev_heading is not None:
+                delta_heading = np.dot(heading, prev_heading)
+                delta_heading = np.arccos(np.clip(delta_heading, -1.0, 1.0))  # avoid numerical issues
             else:
-                n = triang.secondary_cone().hyperplanes()[problematic[0]]
-                self.heights = self.heights + 1e-8*n/np.linalg.norm(n)
+                delta_heading = None
 
-        # update residual norm in history
-        self.history_res_norm.append(self.res_norm())
+            #if (delta_heading is not None) and (delta_heading>0.9*np.pi):
+            #    print(f"DANGEROUS CHANGE IN HEADING OF {delta_heading}")
 
-        if (len(self.history_res_norm) >= self.growth_demand_timescale) and\
-            0.50*self.history_res_norm[-self.growth_demand_timescale] <= self.history_res_norm[-1]:
-            # did not see growth over the demanded timescale
-            self.finished_reason = "didn't meet demanded timescale"
-            self.finished = True
-            self.success = False
-        else:
-            # compute the norm of the residuals, check if we're done
-            if self.res_norm()<self.tolerance:
-                self.finished_reason = "converged"
-                self.finished = True
-                self.success  = True
-            elif not self.last_step_success:
-                self.finished_reason = "last step failed"
-                self.finished = True
-                self.success  = False
+            # update info
+            self.num_steps  += 1
+            if 'num_flips' in anc:
+                if self.num_flips is None:
+                    self.num_flips = anc['num_flips']
+                else:
+                    self.num_flips += anc['num_flips']
+            else:
+                if self.num_flips is not None:
+                    print('performing a non-flip step after flip steps...')
+                    print('spoils the num_flips tracker...')
+                    self.num_flips = None
+            self._kappa_nz   = None
+            self._kappa_vals = None
+            toc = time.time()
+            self._step_taking_time.append(toc-tic)
+            if self.verbosity >= 1:
+                if success:
+                    print("Successful!")
+                else:
+                    print("Not successful :(")
 
-        if (self.finished == False) and\
-            (self._user_halting_fct is not None) and\
-            (self._user_halting_fct(self) == True):
-            # the optimzer wasn't naturally done but it was halted by user
-            self.finished = True
+            # clear the cache
+            self.clear_local_cache(clear_momentum=False, clear_finished_state=False)
+
+            # diagnostics for the step
+            # ------------------------
+            # compute the step size, heading
+            self.last_proposal_size = np.linalg.norm(step_t)
+            self.last_step_size     = np.linalg.norm(h-self.heights)
+            if self.last_step_size == 0:
+                self.step_overestimation = float('inf')
+            else:
+                self.step_overestimation = self.last_proposal_size/self.last_step_size
+            self.prev_heading = prev_heading
+            self.heading      = heading
+            self.delta_heading= delta_heading
+
+            # momentum
+            if self.use_momentum:
+                if self.step_overestimation > 2:
+                    self.momentum = max(
+                        self.min_momentum,
+                        self.momentum_penalty*self.momentum)
+                elif self.step_overestimation < 1.01:
+                    self.momentum = min(
+                        self.max_momentum,
+                        self.momentum_reward*self.momentum)
+
+            # record the history
+            if self.history_level >= 1:
+                # record the current parameters
+                self.history.append(self.x())
+
+            if (self.delta_heading is not None) and \
+                (self.delta_heading >= self.concerning_angle):
+                # record steps with large changes in angle
+                self.history_largeangle.append(self.x())
+
+            if self.history_level >= 2:
+                # also record the step proposals and whether or not they were
+                # successful
+                self.history_proposal.append(step)
+                self.history_successful_step.append(success)
+            
+            if self.history_level >= 2:
+                # also record the triangulation, intersection numbers, and
+                # anciliary data
+                self.history_triang.append(triang)
+                self.history_kappa.append(kappa)
+                self.history_anc.append(anc)
+
+            # update
+            self.last_step_success = success
+            self.heights = h
+            self.other   = other
+            self.triang  = triang
+            self.kappa   = kappa
+            self.anc     = anc
+            assert triang.is_fine()
+            dists = triang.secondary_cone().hyperplanes()@h
+            if not min(dists)>0:
+                # we violated a hyperplane constraint
+                problematic = np.where(dists<1e-8)[0]
+
+                # multiple hyperplane constraints :( quit
+                if len(problematic) > 1:
+                    raise ValueError(f"secondary cone didn't contain heights... violation={min(dists)}; {len(problematic)} constraints violated")
+                # a SINGLE hyperplane constraint - push off the wall by a small amount
+                else:
+                    n = triang.secondary_cone().hyperplanes()[problematic[0]]
+                    self.heights = self.heights + 1e-8*n/np.linalg.norm(n)
+
+            # update residual norm in history
+            self.history_res_norm.append(self.res_norm())
+
+            # if there was a warning in res_norm, then that artificially ends the run... only override
+            # finished if no such early halting occurred
+            if not self.finished:
+                if (len(self.history_res_norm) >= self.growth_demand_timescale) and\
+                    0.50*self.history_res_norm[-self.growth_demand_timescale] <= self.history_res_norm[-1]:
+                    # did not see growth over the demanded timescale
+                    self.finished_reason = "didn't meet demanded timescale"
+                    self.finished = True
+                    self.success = False
+                else:
+                    # compute the norm of the residuals, check if we're done
+                    if self.res_norm()<self.tolerance:
+                        self.finished_reason = "converged"
+                        self.finished = True
+                        self.success  = True
+                    elif not self.last_step_success:
+                        self.finished_reason = "last step failed"
+                        self.finished = True
+                        self.success  = False
+
+                if (self.finished == False) and\
+                    (self._user_halting_fct is not None) and\
+                    (self._user_halting_fct(self) == True):
+                    # the optimzer wasn't naturally done but it was halted by user
+                    self.finished = True
+        except ResNormError:
+            pass
 
         # plot status
         if self.plotting:
@@ -1062,7 +1079,7 @@ class FanRoots:
             swarmling._kappa_vals = None
 
             # clear caches
-            swarmling.clear_local_cache()
+            swarmling.clear_local_cache(clear_momentum=True, clear_finished_state=True)
             swarmling.clear_diagnostics()
             swarmling.clear_history()
 
