@@ -83,7 +83,8 @@ class FlopStep:
             check_kappa=self.check_kappa,
             kappa_init=optimizer.kappa,
             verbosity=int(optimizer.verbosity>1),
-            print_progress=int(optimizer.verbosity>5)
+            print_progress=int(optimizer.verbosity>5),
+            check_regularity=False
         )
         
         # read the data
