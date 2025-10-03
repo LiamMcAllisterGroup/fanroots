@@ -37,7 +37,6 @@ def lma_idk(F, J, lmbda, scaled):
     #cond = np.linalg.cond(A)
     return step#, cond
 
-warnings.warn("lambda setting isn't correct yet... must be dynamic")
 def lma(F, J, JTF, lmbda, scaled):
     """
     **Description:**
@@ -102,10 +101,10 @@ def lma(F, J, JTF, lmbda, scaled):
         step,res = sp.linalg.lstsq(M, -JTF, lapack_driver='gelsy')[0:2]
     else:
         step = np.linalg.solve(M, -JTF)
-        res  = np.sum((-JTF - M @ step)**2, axis=0, keepdims=True)
+
     #cond = np.linalg.cond(M)
     return step#, cond
-    
+
 def propose_lma(optimizer, lmbda=0, scaled=False):
     """
     **Description:**
@@ -139,6 +138,7 @@ def propose_lma(optimizer, lmbda=0, scaled=False):
     - `step_t`: The step in K\"ahler parameters.
     - `step_x`: If other_params is not None, then the step in other_params.
     """
+    raise NotImplementedError("lambda setting isn't correct yet... must be dynamic")
     # fetch the value of the function of interest F (and its Jacobian, J)
     F_h = optimizer.fct()
     J_h = optimizer.jac()
