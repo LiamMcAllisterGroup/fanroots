@@ -51,7 +51,6 @@ def propose_gauss_newton(optimizer):
         heights, then we concatenate the step in these parameters.
     - `cond`: The condition number arising in the computation.
     """
-    raise Exception("This is actually identical to Newton's method but slower... DON'T USE")
     # fetch the value of the function of interest F (and its Jacobian, J)
     F = optimizer.fct()
     J_h = optimizer.jac()
@@ -80,8 +79,10 @@ def propose_gauss_newton(optimizer):
 
     if False:
         step,res = np.linalg.lstsq(JTJ, -JTF, rcond=None)[0:2]
-    else:
+    elif False:
         step,res = sp.linalg.lstsq(JTJ, -JTF, lapack_driver='gelsy')[0:2]
+    else:
+        step = np.linalg.solve(JTJ, -JTF)
 
     #cond = np.linalg.cond(JTJ)
     return step#, cond
