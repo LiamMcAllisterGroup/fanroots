@@ -52,31 +52,44 @@ def always_true(*args, **kwargs):
 
 class FanRoots:
     def __init__(self,
+        # required
         vc: "VectorConfiguration",
         fct: "Callable",
         jac: "Callable",
+
+        # halting
         tolerance = 1e-4,
         min_step_size = 1e-8,
         growth_demand_timescale = float('inf'),
         user_halting_fct = None,
+
+        # initial parameters
         heights0  = None,
         other0    = None,
         triang    = None,
         kappa     = None,
+
+        # step proposal/taking
         step_proposal        = "newton",
         step_size_optimizer  = "shrink",
         step_taking_method   = "flop",
         step_taking_schedule = None,
         learning_rate: float = None,
+
+        # momentum (semi-questionable)
         use_momentum: bool   = True,
         min_momentum: float  = 1e-6,
         max_momentum: float  = 1,
         momentum_penalty: float = 0.5,
         momentum_reward: float = 1.5,
+
+        # plotting/diagnostics
+        plotting: bool       = False,
         plot_condition_num: bool = False,
         concerning_angle: float = np.pi/2,
         history_level: int = 0,
-        plotting: bool       = False,
+        
+        # verbosity
         verbosity: int       = 0):
         """
         **Description:**
