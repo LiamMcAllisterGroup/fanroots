@@ -50,6 +50,11 @@ class ResNormError(Exception):
 def always_true(*args, **kwargs):
     return True
 
+def fanroots_from_state(state):
+    obj = FanRoots.__new__(FanRoots)
+    obj.__dict__.update(state)
+    return obj
+
 class FanRoots:
     def __init__(self,
         # required
@@ -252,20 +257,8 @@ class FanRoots:
         self.other   = other0
 
         # the current phase/intersection numbers
-        if triang is None:
-            self.triang = self.vc.subdivide(self.heights).as_toric()
-        else:
-            self.triang = triang
-        if kappa is None:
-            self.kappa  = self.triang.intersection_numbers(in_basis=True,
-                                                             pushed_down=True,
-                                                             as_np_array=True)
-        else:
-            self.kappa  = kappa
-
-        # sparse representation of kappa (not fully implemented, yet)
-        self._kappa_nz   = None
-        self._kappa_vals = None
+        self.set_triang(triang)
+        self.set_kappa(kappa)
 
         # initialize cached local information
         self.clear_local_cache(clear_momentum=True, clear_finished_state=True)
@@ -330,6 +323,23 @@ class FanRoots:
 
     # history/init
     # ------------
+    def set_triang(self, val=None):
+        if val is None:
+            self.triang = self.vc.subdivide(self.heights).as_toric()
+        else:
+            self.triang = val
+
+    def set_kappa(self, val=None):
+        self._kappa_nz   = None
+        self._kappa_vals = None
+
+        if val is None:
+            self.kappa  = self.triang.intersection_numbers(in_basis=True,
+                                                           pushed_down=True,
+                                                           as_np_array=True)
+        else:
+            self.kappa = val
+
     def clear_local_cache(self,
         clear_momentum=False,
         clear_finished_state=False
@@ -404,6 +414,13 @@ class FanRoots:
 
     def load_state(self, state):
         self.__dict__.update(state)
+
+    def load_heights_other(self, heights, other):
+        self.clear_local_cache(clear_momentum=True, clear_finished_state=True)
+        self.heights = heights
+        self.other   = other
+        self.set_triang()
+        self.set_kappa()
 
     def get_status(self):
         """
@@ -745,6 +762,7 @@ class FanRoots:
                 print("Attempting the step...")
             elif self.verbosity > 1:
                 print(f"Attempting the step from x={self.x()} to x+{step}...")
+            
             tic = time.time()
             success, h, triang, kappa, anc = self.step_taking_method(self, step_t)
             if not self.only_heights:
@@ -780,9 +798,8 @@ class FanRoots:
                     print('performing a non-flip step after flip steps...')
                     print('spoils the num_flips tracker...')
                     self.num_flips = None
-            self._kappa_nz   = None
-            self._kappa_vals = None
             toc = time.time()
+
             self._step_taking_time.append(toc-tic)
             if self.verbosity >= 1:
                 if success:
@@ -844,8 +861,8 @@ class FanRoots:
             self.last_step_success = success
             self.heights = h
             self.other   = other
-            self.triang  = triang
-            self.kappa   = kappa
+            self.set_triang(triang)
+            self.set_kappa(kappa)
             self.anc     = anc
             if paranoid:
                 assert triang.is_fine()
