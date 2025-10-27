@@ -7,10 +7,12 @@
 # =============================================================================
 
 import copy
-from datetime import datetime
 import joblib
-#import numbers
 import numpy as np
+from datetime import datetime
+import time
+
+# plotting
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from plotly.validator_cache import ValidatorCache
@@ -19,12 +21,9 @@ SymbolValidator = ValidatorCache.get_validator("scatter.marker", "symbol")
 plotly_symbols = SymbolValidator.values
 plotly_symbols = [i for i in plotly_symbols if isinstance(i,int) and i<100]
 
-import time
-import warnings
-
+# warnings/logs/debugging
 start_time = datetime.now().strftime('%Y%m%d_%H%M%S')
-
-import os
+import os, sys, traceback
 from pathlib import Path
 import warnings
 warnings.filterwarnings(
@@ -33,14 +32,13 @@ warnings.filterwarnings(
     message="A worker stopped while some jobs were given to the executor.*"
 )
 
-import traceback
-import sys
-
-
+# local imports
 from lib.util.fan_root.src.step_proposal import newton, gauss_newton, lma, gradient_descent
 from lib.util.fan_root.src.step_size import naive, backtracking_line_search, shrink, ternary
 from lib.util.fan_root.src.step_taking import flop
 
+# misc helpers
+# ------------
 class ResNormError(Exception):
     """
     Raised when residual norm computation fails (overflow).
@@ -55,6 +53,8 @@ def fanroots_from_state(state):
     obj.__dict__.update(state)
     return obj
 
+# main method
+# -----------
 class FanRoots:
     def __init__(self,
         # required
