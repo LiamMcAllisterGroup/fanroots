@@ -612,7 +612,7 @@ class FanRoots:
             out = np.array(out, copy=True, order='C')
         return out
 
-    def res_norm(self, x=None):
+    def res_norm(self, x=None, use_actual_kappa=False):
         """
         For checking convergence, we monitor the sum of squared residuals.
         For root finding, the residual is just the function itself.
@@ -622,8 +622,28 @@ class FanRoots:
 
             # vvvv FUNCTION CALL vvvv
             # override with manually input location
+            if use_actual_kappa:
+                # store the real values
+                h     = opt.heights
+                other = opt.other
+                tri   = opt.triang
+                kappa = opt.kappa
+
+                # fake with new values
+                opt.heights = x[:self.num_vecs]
+                opt.other   = x[self.num_vecs:]
+                opt.set_triang()
+                opt.set_kappa()
+
             f = self.fct(x)
             out = np.sum(np.square(f.real) + np.square(f.imag))
+
+            if use_actual_kappa:
+                # reset
+                opt.heights = h
+                opt.other   = other
+                opt.triang  = tri
+                opt.kappa   = kappa
             # ^^^^ FUNCTION CALL ^^^^
 
             for warn in w:
