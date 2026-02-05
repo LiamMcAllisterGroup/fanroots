@@ -46,7 +46,6 @@ class FlopStep:
     - `heights`: The initial heights = vc.jorp(kahler).
     - `check_triang`: Whether to check that triang is indeed defined by kahler,
                       triang=vc.subdivide(heights=vc.jorp(kahler))
-    - `check_kappa`: Whether to check intersection numbers after each flop.
 
     **Returns:**
     - `success`: Whether the step succeeded. I.e., whether some r>0 was found
@@ -56,10 +55,9 @@ class FlopStep:
     - `kappa`:   The intersection numbers of triang.
     - `anc`:     The anciliary data.
     """
-    def __init__(self, max_num_flips=1, check_triang=False, check_kappa=False):
+    def __init__(self, max_num_flips=1, check_triang=False):
         self.max_num_flips = max_num_flips
         self.check_triang = check_triang
-        self.check_kappa = check_kappa
 
     def __call__(self, optimizer, step):
         # current, target heights
@@ -80,15 +78,15 @@ class FlopStep:
             h_init=h_curr,
             stop_at_deletion=True,
             max_N_flips=self.max_num_flips,
-            check_kappa=self.check_kappa,
-            kappa_init=optimizer.kappa,
+
+            #kappa_init=optimizer.kappa,
             verbosity=int(optimizer.verbosity>1),
-            print_progress=int(optimizer.verbosity>5),
+            #print_progress=int(optimizer.verbosity>5),
             check_regularity=False
         )
         
         # read the data
-        status, h_curr, triang, sc, num_flips, kappa = out
+        status, h_curr, triang, sc, num_flips = out
 
         # parse the data
         if False:
@@ -121,4 +119,4 @@ class FlopStep:
             'failure_mode': fail_mode, # None indicates success
             }
 
-        return success, h_curr, triang, kappa, anc
+        return success, h_curr, triang, optimizer.triang.kappa, anc
