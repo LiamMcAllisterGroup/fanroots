@@ -325,7 +325,7 @@ class FanRoots:
     # ------------
     def set_triang(self, val=None):
         if val is None:
-            self.triang = self.vc.subdivide(self.heights).as_toric()
+            self.triang = self.vc.subdivide(self.heights)
         else:
             self.triang = val
 
@@ -1115,7 +1115,7 @@ class FanRoots:
             swarmling.heights = new_heights
             try:
                 # try to make a new fine triangulation
-                swarmling.triang = swarmling.vc.subdivide(swarmling.heights).as_toric()
+                swarmling.triang = swarmling.vc.subdivide(swarmling.heights)
                 assert swarmling.triang.is_fine()
             except:
                 # failed... retry
