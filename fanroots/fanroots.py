@@ -212,6 +212,8 @@ class FanRoots:
         self.tolerance     = tolerance**2
         self.min_step_size = min_step_size
         self.growth_demand_timescale = growth_demand_timescale
+        if self.growth_demand_timescale is None:
+            self.growth_demand_timescale = float('inf')
 
         # user halting
         self._user_halting_fct = user_halting_fct
