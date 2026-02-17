@@ -33,8 +33,10 @@ warnings.filterwarnings(
 )
 
 # local imports
-from lib.util.fan_root.src.step_proposal import newton, gauss_newton, lma, gradient_descent
-from lib.util.fan_root.src.step_size import naive, backtracking_line_search, shrink, ternary
+from lib.util.fan_root.src.step_proposal import newton, gauss_newton, lma,\
+                                                gradient_descent
+from lib.util.fan_root.src.step_size import naive, backtracking_line_search,\
+                                            shrink, ternary
 from lib.util.fan_root.src.step_taking import flop
 
 # misc helpers
@@ -63,16 +65,16 @@ class FanRoots:
         jac: "Callable",
 
         # halting
-        tolerance = 1e-4,
-        min_step_size = 1e-8,
-        growth_demand_timescale = float('inf'),
-        user_halting_fct = None,
+        tolerance:               float = 1e-4,
+        min_step_size:           float = 1e-8,
+        growth_demand_timescale: float = float('inf'),
+        user_halting_fct:   "Callable" = None,
 
         # initial parameters
-        heights0  = None,
-        other0    = None,
-        triang    = None,
-        kappa     = None,
+        heights0: "ArrayLike" = None,
+        other0:   "ArrayLike" = None,
+        triang:         "Fan" = None,
+        kappa:     "ArryLike" = None,
 
         # step proposal/taking
         step_proposal        = "newton",
@@ -82,11 +84,11 @@ class FanRoots:
         learning_rate: float = None,
 
         # momentum (semi-questionable)
-        use_momentum: bool   = True,
-        min_momentum: float  = 1e-6,
-        max_momentum: float  = 1,
+        use_momentum:      bool = True,
+        min_momentum:     float = 1e-6,
+        max_momentum:     float = 1,
         momentum_penalty: float = 0.5,
-        momentum_reward: float = 1.5,
+        momentum_reward:  float = 1.5,
 
         # plotting/diagnostics
         plotting: bool       = False,
