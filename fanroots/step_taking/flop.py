@@ -59,7 +59,7 @@ class FlopStep:
         self.max_num_flips = max_num_flips
         self.check_triang = check_triang
 
-    def __call__(self, optimizer, step):
+    def __call__(self, optimizer, step, project=False, tau=1e-4):
         # current, target heights
         if False:
             h_curr   = optimizer.vc.jorp(optimizer.kahler)
@@ -88,28 +88,50 @@ class FlopStep:
         # read the data
         status, h_curr, triang, sc, num_flips = out
 
-        # parse the data
+        # check how far along the step we actually moved
         if False:
             t = optimizer.vc.proj(h_curr)
             r = np.dot(t-optimizer.kahler,step)/np.dot(step,step)
         else:
             r = np.dot(h_curr-optimizer.heights,step)/np.dot(step,step)
 
-        # determine if the step was a success
-        #if isinstance(status, Exception):
-        if np.linalg.norm(optimizer.heights-h_curr) < optimizer.min_step_size:
-            success = False
-        else:
-            success = True
+        # project the initial step if r != 1
+        if project:
+            # get the stopping hyperplane
+            n = sc[np.argmin(sc@h_curr)]
 
-        # save success/fail info
-        if success:
-            fail_mode = None
+            # step h_curr + projected_step, instead of h_curr + step
+            # the modifications ensure
+            #     dot(n, h_curr + projected_step) = tau * np.linalg.norm(h_curr) > 0
+            projected_step   = step + (tau*np.linalg.norm(h_curr) - np.dot(n,h_target)) * n/np.dot(n,n)
+            projected_target = h_curr + projected_step
+
+            # might have moved a triangulation...
+            triang    = optimizer.vc.triangulate(heights=projected_target)
+            success   = triang.is_fine()
+            if success:
+                h_curr    = projected_target
+                fail_mode = None
+            else:
+                fail_mode = "hit wall of BG and projection led to non-fine triangulation"
+                if not optimizer.last_step_success:
+                    optimizer.finished = True
         else:
-            #fail_mode = status.args
-            fail_mode = "step too small"
-            if not optimizer.last_step_success:
-                optimizer.finished = True
+            # determine if the step was a success
+            #if isinstance(status, Exception):
+            if np.linalg.norm(optimizer.heights-h_curr) < optimizer.min_step_size:
+                success = False
+            else:
+                success = True
+
+            # save success/fail info
+            if success:
+                fail_mode = None
+            else:
+                #fail_mode = status.args
+                fail_mode = "step too small"
+                if not optimizer.last_step_success:
+                    optimizer.finished = True
 
         anc = {
             'num_flips': num_flips,
