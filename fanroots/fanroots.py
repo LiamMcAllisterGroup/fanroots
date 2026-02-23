@@ -1207,6 +1207,12 @@ class BatchOptimizer():
     def step(self, num=1, serial=False, backend='loky'):
         outputs = []
 
+        # force serial mode if there is a single optimizer
+        # (the parallel mode has some annoying overhead)
+        if serial == False:
+            if len(self.batch) == 1:
+                serial =True
+
         # run in series
         if serial:
             if self.plotting:
