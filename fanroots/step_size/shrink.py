@@ -12,17 +12,18 @@
 
 def shrink(optimizer, step, tol=1e-8):
     alpha = 1
-    res0 = optimizer.res_norm()
+    res0 = optimizer.res_norm(optimizer.x())
 
     while True:
         res = optimizer.res_norm(optimizer.x() + alpha*step)
-        if res<res0:
+        print(alpha, res0, res, optimizer.x(), step)
+        if res<=res0:
             # step decreases residual... accept it!
             break
         else:
             # stepped too far... shrink it!
             alpha /= 2
             if alpha < tol:
-                raise ValueError()
+                return 0
 
     return alpha
