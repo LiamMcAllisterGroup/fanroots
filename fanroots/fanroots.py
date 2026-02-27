@@ -819,8 +819,9 @@ class FanRoots:
                     self.num_flips += anc['num_flips']
             else:
                 if self.num_flips is not None:
-                    print('performing a non-flip step after flip steps...')
-                    print('spoils the num_flips tracker...')
+                    if self.verbosity >= 0:
+                        print('performing a non-flip step after flip steps...')
+                        print('spoils the num_flips tracker...')
                     self.num_flips = None
             toc = time.time()
 
