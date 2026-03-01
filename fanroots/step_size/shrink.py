@@ -16,7 +16,6 @@ def shrink(optimizer, step, tol=1e-8):
 
     while True:
         res = optimizer.res_norm(optimizer.x() + alpha*step)
-        print(alpha, res0, res, optimizer.x(), step)
         if res<=res0:
             # step decreases residual... accept it!
             break
