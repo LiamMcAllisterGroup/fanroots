@@ -87,6 +87,43 @@ class VolumeFinder(FanRoots):
         self.clear_local_cache(clear_momentum=True, clear_finished_state=True)
         self._target = value
 
+    # misc
+    # ----
+    def div_vols(self, h, extrapolate=False):
+        # compute tau
+        # i.e., solve 0.5 kappa_{ijk} (glsm@h)^j (glsm@h)^k
+        t = self.glsm@h
+
+        # evaluate at the current location using correct kappa
+        if (not extrapolate) and (not self.triang.secondary_cone().contains(h)):
+            tri = self.vc.triangulate(heights=h)
+            kappa = tri.intersection_numbers(in_basis=True,
+                                             pushed_down=True,
+                                             as_np_array=True)
+            return 0.5 * (kappa@t)@t
+
+        # potentially extrapolate kappa beyond the KC...
+        if False:
+            tau_curr = 0.5*np.einsum(
+                'ijk,j,k', 
+                self.kappa, t, t,
+                optimize=True) # this is unrelated to the optimizer...
+        elif False:
+            tau_curr = 0.5 * (self.kappa@t)@t
+        else:
+            # do things in an explicitly-sparse manner...
+            # much faster, if we already have kappa_nz and kappa_vals
+            i,j,k = self.kappa_nz()
+            vals = self.kappa_vals()
+
+            prod = vals * t[j] * t[k]
+
+            tau_curr = np.zeros_like(t)
+            np.add.at(tau_curr, i, prod)
+            tau_curr *= 0.5
+
+        return tau_curr
+
 # step taking schedules
 # ---------------------
 crossover_step_size = 1
@@ -111,32 +148,8 @@ def fct(optimizer, h):
     """
     Function to find a root of,
         f(h) = \\tau(h) - target.
-    """
-    # compute tau
-    # i.e., solve 0.5 kappa_{ijk} (GLSM@h)^j (GLSM@h)^k
-    t = optimizer.glsm@h
-
-    if False:
-        tau_curr = 0.5*np.einsum(
-            'ijk,j,k', 
-            optimizer.kappa, t, t,
-            optimize=True) # this is unrelated to the optimizer...
-    elif False:
-        tau_curr = 0.5 * (optimizer.kappa@t)@t
-    else:
-        # do things in an explicitly-sparse manner...
-        # much faster, if we already have kappa_nz and kappa_vals
-        i,j,k = optimizer.kappa_nz()
-        vals = optimizer.kappa_vals()
-
-        prod = vals * t[j] * t[k]
-
-        tau_curr = np.zeros_like(t)
-        np.add.at(tau_curr, i, prod)
-        tau_curr *= 0.5
-             
-    # return tau-target
-    return tau_curr-optimizer.target
+    """      
+    return optimizer.div_vols(h,extrapolate=True)-optimizer.target
 
 def jac(optimizer, h):
     t = optimizer.glsm@h
