@@ -96,7 +96,8 @@ class FanRoots:
         concerning_angle: float = np.pi/2,
         history_level: int = 0,
         
-        # verbosity
+        # verbosity/error handling
+        allow_runtime_warnings: bool = True,
         verbosity: int       = 0):
         """
         **Description:**
@@ -296,6 +297,13 @@ class FanRoots:
 
         # misc/kwargs
         # -----------
+        if allow_runtime_warnings and (verbosity >= 0):
+            print("By setting `allow_runtime_warnings=True`, you are explictly requesting")
+            print("that the optimizer does NOT halt upon undefined behavior like `1/0`.")
+            print()
+            print("In this case, there will be less certification that anything works...")
+            print("If this is intended, decrease the verbosity level to `-1` to silence this warning")
+        self.allow_runtime_warnings = allow_runtime_warnings
         self.verbosity = verbosity
 
     # generic methods
@@ -664,7 +672,10 @@ class FanRoots:
                     msg += f"f.imag: {f.imag}\n"
                     msg += f"norm parts: {np.square(f.real), np.square(f.imag)}"
 
-                    raise ResNormError(msg)
+                    if self.allow_runtime_warnings:
+                        print(w)
+                    else:
+                        raise ResNormError(msg)
 
         return out
 
