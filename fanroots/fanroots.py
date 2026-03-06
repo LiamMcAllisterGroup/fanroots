@@ -97,7 +97,7 @@ class FanRoots:
         history_level: int = 0,
         
         # verbosity/error handling
-        allow_runtime_warnings: bool = False,
+        reckless_mode: bool = False,
         verbosity: int       = 0):
         """
         **Description:**
@@ -297,13 +297,13 @@ class FanRoots:
 
         # misc/kwargs
         # -----------
-        if allow_runtime_warnings and (verbosity >= 0):
-            print("By setting `allow_runtime_warnings=True`, you are explictly requesting")
+        if reckless_mode and (verbosity >= 0):
+            print("By setting `reckless_mode=True`, you are explictly requesting")
             print("that the optimizer does NOT halt upon undefined behavior like `1/0`.")
             print()
             print("In this case, there will be less certification that anything works...")
             print("If this is intended, decrease the verbosity level to `-1` to silence this warning")
-        self.allow_runtime_warnings = allow_runtime_warnings
+        self.reckless_mode = reckless_mode
         self.verbosity = verbosity
 
     # generic methods
@@ -672,7 +672,7 @@ class FanRoots:
                     msg += f"f.imag: {f.imag}\n"
                     msg += f"norm parts: {np.square(f.real), np.square(f.imag)}"
 
-                    if self.allow_runtime_warnings:
+                    if self.reckless_mode:
                         print(w)
                     else:
                         raise ResNormError(msg)
