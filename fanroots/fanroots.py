@@ -97,7 +97,7 @@ class FanRoots:
         history_level: int = 0,
         
         # verbosity/error handling
-        allow_runtime_warnings: bool = True,
+        allow_runtime_warnings: bool = False,
         verbosity: int       = 0):
         """
         **Description:**
