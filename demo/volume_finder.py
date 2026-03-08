@@ -151,7 +151,15 @@ def fct(optimizer, h):
     """      
     return optimizer.div_vols(h,extrapolate=True)-optimizer.target
 
-def jac(optimizer, h):
+def jac(optimizer, h, extrapolate=False):
+    if (not extrapolate) and (not optimizer.triang.secondary_cone().contains(h)):
+        tri   = optimizer.vc.triangulate(heights=h)
+        kappa = tri.intersection_numbers(in_basis=True,
+                                         pushed_down=True,
+                                         as_np_array=True)
+    else:
+        kappa = optimizer.kappa
+
     t = optimizer.glsm@h
     A = (optimizer.kappa@t)
 
