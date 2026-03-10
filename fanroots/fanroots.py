@@ -771,6 +771,8 @@ class FanRoots:
                 out = self.get_state()
             else:
                 out = self.get_status()
+            if self.verbosity >= 1:
+                print(f"Finished with status/state:\n{out}")
             return out
 
         try:
@@ -780,12 +782,23 @@ class FanRoots:
             tic = time.time()
             #step, cond = self.compute_next_step()
             step = self.compute_next_step()
+
             #self._condition_number = cond
             if self.only_heights:
                 step_t = step
             else:
                 step_t     = step[:self.num_vecs]
                 step_other = step[self.num_vecs:]
+
+            # shrink the step if it's significantly larger than previous one
+            new_raw_step_size = np.linalg.norm(step_t)
+            r = 1.5
+            if (self.last_step_size is not None) and (new_raw_step_size > r*self.last_step_size):
+                rat = r*self.last_step_size/new_raw_step_size
+                step_t *= rat
+                if not self.only_heights:
+                    step_other *= rat
+
             toc = time.time()
             self._step_proposal_time.append(toc-tic)
 
