@@ -73,7 +73,7 @@ class VolumeFinder(FanRoots):
 
     def get_status(self):
         status = super().get_status()
-        status['target'] = self.target
+        status['target'] = self.target.tolist()
         return status
 
     # updates

@@ -441,9 +441,9 @@ class FanRoots:
         status = dict()
 
         # variables
-        status['heights']   = self.heights
+        status['heights']   = self.heights.tolist()
         if not self.only_heights:
-            status['other'] = self.other
+            status['other'] = self.other.tolist()
 
         # tolerance/completion
         status['finished']  = self.finished
@@ -456,7 +456,7 @@ class FanRoots:
         status['last_step_size']    = self.last_step_size
         status['last_step_success'] = self.last_step_success
 
-        status['heading']   = self.heading
+        status['heading']   = self.heading.tolist()
         status['anc']       = self.anc
         
         # misc
@@ -777,7 +777,7 @@ class FanRoots:
 
         try:
             # not done - compute next step
-            if self.verbosity >= 1:
+            if self.verbosity >= 2:
                 print("Deciding upon a step to propose...")
             tic = time.time()
             #step, cond = self.compute_next_step()
@@ -806,9 +806,9 @@ class FanRoots:
             # (update step taking method if necessary)
             self.update_step_taking_method()
 
-            if self.verbosity == 1:
+            if self.verbosity == 2:
                 print("Attempting the step...")
-            elif self.verbosity > 1:
+            elif self.verbosity > 2:
                 print(f"Attempting the step from x={self.x()} to x+{step}...")
             
             tic = time.time()
@@ -850,7 +850,7 @@ class FanRoots:
             toc = time.time()
 
             self._step_taking_time.append(toc-tic)
-            if self.verbosity >= 1:
+            if self.verbosity >= 2:
                 if success:
                     print("Successful!")
                 else:
