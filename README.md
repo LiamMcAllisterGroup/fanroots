@@ -60,7 +60,3 @@ Key arguments (see `help(FanRoots)` for the full list):
 | `verbosity` | int | Controls diagnostic output |
 
 See `demo/volume_finder.py` for a complete example finding Kähler parameters that realize prescribed divisor volumes.
-
-## Citation
-
-This package was developed for FILL IN. Fan operations are provided by [regfans](https://github.com/natemacfadden/regfans); toric-geometric computations by [CYTools](https://github.com/LiamMcAllisterGroup/cytools).
