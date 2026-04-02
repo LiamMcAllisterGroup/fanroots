@@ -47,6 +47,18 @@ optimizer = FanRoots(
 optimizer.run()
 ```
 
+Key arguments (see `help(FanRoots)` for the full list):
+
+| Argument | Options | Description |
+|---|---|---|
+| `step_proposal` | `"newton"`, `"gauss_newton"`, `"grad"`, `"lma"` | Step direction method |
+| `step_size_optimizer` | `"shrink"`, `"backtracking"`, `"ternary"`, `"naive"` | Step size tuning |
+| `step_taking_method` | `"jump"`, `"flop"` | How to move through the fan; overridden by `step_taking_schedule` for mixed strategies |
+| `learning_rate` | float | Scales the proposed step before size optimization |
+| `tolerance` | float | Halt when `\|fct(h)\|_2 < tolerance` |
+| `min_step_size` | float | Halt if step shrinks below this |
+| `verbosity` | int | Controls diagnostic output |
+
 See `demo/volume_finder.py` for a complete example finding Kähler parameters that realize prescribed divisor volumes.
 
 ## Citation
