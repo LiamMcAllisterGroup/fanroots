@@ -1,9 +1,18 @@
 # =============================================================================
-# Unless this comment is removed, this code is meant solely for members of Liam
-# McAllister's group or other people associated with the 'private' variant of
-# CYTools.
+#    Copyright (C) 2026  Liam McAllister Group
 #
-# Those people should feel free to use/modify this code as they see fit.
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
 #
 # -----------------------------------------------------------------------------
@@ -80,7 +89,7 @@ class FlopStep:
             max_N_flips=self.max_num_flips,
 
             #kappa_init=optimizer.kappa,
-            verbosity=int(optimizer.verbosity>1),
+            verbosity=optimizer.verbosity-1,
             #print_progress=int(optimizer.verbosity>5),
             check_regularity=False
         )
@@ -89,11 +98,20 @@ class FlopStep:
         status, h_curr, triang, sc, num_flips = out
 
         # check how far along the step we actually moved
-        if False:
-            t = optimizer.vc.proj(h_curr)
-            r = np.dot(t-optimizer.kahler,step)/np.dot(step,step)
-        else:
-            r = np.dot(h_curr-optimizer.heights,step)/np.dot(step,step)
+        denom = np.dot(step,step)
+        if denom == 0:
+            fail_mode = "hit wall of BG and projection led to non-fine triangulation"
+            anc = {
+                'num_flips': num_flips,
+                #'heights': h_curr,
+                #'secondary_cone': sc,
+                'step_scaling': r,
+                'failure_mode': fail_mode, # None indicates success
+                }
+
+            return success, h_curr, triang, optimizer.triang.kappa, anc
+
+        r = np.dot(h_curr-optimizer.heights,step)/denom
 
         # project the initial step if r != 1
         if project:

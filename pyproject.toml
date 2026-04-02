@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fanroots"
+version = "0.0.1"
+description = "Root-finding and optimization on polyhedral fans"
+authors = [{ name = "Nate MacFadden for the Liam McAllister Group" }]
+readme = "README.md"
+license = "GPL-3.0-or-later"
+keywords = ["polyhedral fan", "optimization", "Calabi-Yau", "root-finding", "secondary fan"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "joblib",
+    "plotly",
+]
+requires-python = ">=3.9"
+
+[project.optional-dependencies]
+cytools = ["cytools"]
+test = ["pytest"]
+
+[project.urls]
+Repository = "https://github.com/natemacfadden/fanroots"
+
+[tool.setuptools]
+packages = ["fanroots", "fanroots.step_proposal", "fanroots.step_size", "fanroots.step_taking"]
