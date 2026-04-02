@@ -30,16 +30,10 @@ Requires [regfans](https://github.com/natemacfadden/regfans). For string-theoret
 
 ## Usage
 
-Subclass `FanRoots` and provide a function `fct` and its Jacobian `jac`, both taking the optimizer instance and a height vector:
+This operates via an optimization class `FanRoots`:
 
 ```python
 from fanroots import FanRoots
-
-def fct(optimizer, h):
-    return my_function(h) - target
-
-def jac(optimizer, h):
-    return my_jacobian(h)
 
 optimizer = FanRoots(
     vc=my_vector_configuration,
