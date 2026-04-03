@@ -50,9 +50,10 @@ def propose_newton(optimizer):
 
     Returns
     -------
-    step : ndarray
-        The proposed step. Contains the step in heights (and optionally
-        other parameters, concatenated).
+    step : ndarray of shape (n,)
+        The proposed step, where n = len(heights) + len(other).
+        Contains the step in heights (and optionally other parameters,
+        concatenated).
     """
     # fetch the value of the function of interest F (and its Jacobian, J)
     F_h = optimizer.fct()

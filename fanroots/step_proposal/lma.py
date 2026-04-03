@@ -86,11 +86,11 @@ def lma(F, J, JTF, lmbda, scaled):
 
     Parameters
     ----------
-    F : ndarray
+    F : ndarray of shape (m,)
         The value of the function at the current location.
-    J : ndarray
+    J : ndarray of shape (m, n)
         The value of the Jacobian at the current location.
-    JTF : ndarray
+    JTF : ndarray of shape (n,)
         The product J.T @ F.
     lmbda : float
         The damping factor/Marquardt parameter.
@@ -99,7 +99,7 @@ def lma(F, J, JTF, lmbda, scaled):
 
     Returns
     -------
-    step : ndarray
+    step : ndarray of shape (n,)
         The proposed step to take.
     """
     JTJ = J.T@J
@@ -150,8 +150,9 @@ def propose_lma(optimizer, lmbda=0, scaled=False):
 
     Returns
     -------
-    step : ndarray
-        The proposed step in heights (and optionally other parameters,
+    step : ndarray of shape (n,)
+        The proposed step, where n = len(heights) + len(other).
+        Contains the step in heights (and optionally other parameters,
         concatenated).
     """
     raise NotImplementedError("lambda setting isn't correct yet... must be dynamic")

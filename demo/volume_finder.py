@@ -15,6 +15,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
 
+from __future__ import annotations
+
 #import sys; sys.path.append('..')
 from fanroots.fanroots import FanRoots
 from fanroots.step_taking import flop, jump
@@ -46,9 +48,9 @@ class VolumeFinder(FanRoots):
 
         Parameters
         ----------
-        target : np.ndarray
+        target : np.ndarray of shape (h11,)
             The target divisor volumes.
-        heights0 : ArrayLike, optional
+        heights0 : ArrayLike of shape (N_vecs,), optional
             Starting value of h to use.
         step_taking_schedule : list, optional
             A schedule setting the step taking method. Requires a list

@@ -47,8 +47,9 @@ def propose_gradient_descent(optimizer):
 
     Returns
     -------
-    step : ndarray
-        The proposed step in heights (and optionally other parameters,
+    step : ndarray of shape (n,)
+        The proposed step, where n = len(heights) + len(other).
+        Contains the step in heights (and optionally other parameters,
         concatenated).
     """
     # compute the step

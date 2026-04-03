@@ -56,13 +56,13 @@ class FlopStep:
         optimizer : FanRoots
             The FanRoots instance with current state (heights, triang,
             min_step_size, verbosity, etc.).
-        step : ndarray
+        step : ndarray of shape (N_vecs,)
             The requested step h->h+step.
 
     And returns:
         success : bool
             Whether some r>0 was found such that t->t+r*step is valid.
-        h : ndarray
+        h : ndarray of shape (N_vecs,)
             The heights after the step.
         triang : Fan
             The triangulation at the new location. Kappa accessible

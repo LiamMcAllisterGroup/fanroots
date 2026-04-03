@@ -52,9 +52,10 @@ def propose_gauss_newton(optimizer):
 
     Returns
     -------
-    step : ndarray
-        The step in parameters. If there are more parameters than
-        just heights, the step in those parameters is concatenated.
+    step : ndarray of shape (n,)
+        The step in parameters, where n = len(heights) + len(other).
+        If there are more parameters than just heights, the step in
+        those parameters is concatenated.
     """
     # fetch the value of the function of interest F (and its Jacobian, J)
     F = optimizer.fct()

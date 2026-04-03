@@ -15,6 +15,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
 
+from __future__ import annotations
+
 import copy
 import joblib
 import numpy as np
@@ -152,9 +154,9 @@ class FanRoots:
         user_halting_fct : Callable, optional
             A function taking a single argument (the FanRoots
             instance) that halts the optimization if it returns True.
-        heights0 : ArrayLike, optional
+        heights0 : ArrayLike of shape (N_vecs,), optional
             Starting value of h to use.
-        other0 : ArrayLike, optional
+        other0 : ArrayLike of shape (N_other,), optional
             Starting value of x to use. If not provided, no
             x-dependence is assumed.
         triang : Fan, optional
@@ -162,22 +164,22 @@ class FanRoots:
             vc.subdivide(heights). Can be computed on the fly, but
             that's less efficient for batches starting from the same
             triangulation.
-        kappa : ArrayLike, optional
+        kappa : ArrayLike of shape (h11, h11, h11), optional
             The initial intersection numbers, corresponding to
             triang.intersection_numbers(in_basis=True,
             pushed_down=True, as_np_array=True). Can be computed on
             the fly, but that's less efficient for batches.
-        step_proposal : str or Callable, optional
+        step_proposal : str | Callable, optional
             The step proposal method. Set as a string: "newton" (for
             Newton's method), "grad" (for gradient descent), or "lma"
             (for Levenberg-Marquardt algorithm). N.B.: lma subsumes
             Gauss-Newton (lmbda=0) and gradient descent (lmbda->inf).
             Note: lma is not yet implemented. Defaults to "newton".
-        step_size_optimizer : str or Callable, optional
+        step_size_optimizer : str | Callable, optional
             An optimizer for setting the step size after a proposal by
             ``step_proposal``. Think backtracking line search.
             Defaults to "shrink".
-        step_taking_method : str or object, optional
+        step_taking_method : str | object, optional
             The method for taking steps. Primarily ``bigstepper`` and
             ``flopper``. Primarily has efficiency implications but can
             also lead to somewhat different trajectories. Defaults to
@@ -628,7 +630,7 @@ class FanRoots:
     def x(self):
         """
         Wrap up all parameters (heights and, optionally, other parameters) into
-        a long vector.
+        a long vector of shape (n,), where n = len(heights) + len(other).
         """
         if self.only_heights:
             return self.heights
