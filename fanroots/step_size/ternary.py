@@ -21,6 +21,8 @@
 
 def ternary_raw(f, left, right, absolute_precision):
     """
+    Ternary search to minimize f over [left, right].
+
     Taken from https://en.wikipedia.org/wiki/Ternary_search
 
     Adjusted to minimize f, not maximize.
@@ -44,6 +46,14 @@ def ternary(optimizer, step, absolute_precision=1e-1):
     """
     ASSUME UNIMODULAR
     """
+    import sys, math, warnings
+    expected_depth = math.log(1 / absolute_precision) / math.log(1.5)
+    if expected_depth > sys.getrecursionlimit() - 50:
+        warnings.warn(
+            f"ternary: absolute_precision={absolute_precision} may cause"
+            f" RecursionError (expected depth ~{int(expected_depth)})"
+        )
+
     f = lambda alpha: optimizer.res_norm(optimizer.x() + alpha*step)
 
     return ternary_raw(f, 0, 1, absolute_precision)

@@ -19,6 +19,7 @@
 from fanroots.fanroots import FanRoots
 from fanroots.step_taking import flop, jump
 import numpy as np
+from numpy.typing import ArrayLike
 
 class VolumeFinder(FanRoots):
     def __init__(self,
@@ -26,7 +27,7 @@ class VolumeFinder(FanRoots):
         target: np.ndarray,
 
         # initial parameters
-        heights0: "ArrayLike" = None,
+        heights0: ArrayLike = None,
 
         # step proposal/taking
         step_taking_schedule  = None,
@@ -35,32 +36,33 @@ class VolumeFinder(FanRoots):
         # all other arguments (see FanRoots)
         **kwargs):
         """
-        **Description:**
-        Construct a VolumeFinder object (derived from FanRoots) to solve for
-        heights/kahler parameters satisfying `divisor_volumes = target`.
+        Construct a VolumeFinder to solve for divisor_volumes = target.
 
-        **Arguments:**
-        - `target`: The target divisor volumes
-        - `heights0`: Starting value of h to use.
-        - `step_taking_schedule`: A schedule setting the step taking method.
-            Requires a list of tuples. Use method tuple[1] if check tuple[0]
-            passes. Checks in order of the list.
-        - `learning_rate`: Scale down the proposed step by this factor, before
-            doing any step size optimization. Normally paired with trivial step
-            size optimization (always accept proposed step).
-        - `include_corrections: Whether to include general (non-GV) corrections.
-        - `include_ws_instantons`: Whether to include WSI corrections.
-        - `gs`: The value of the string coupling to use.
-        - `bfields`: The value of the B-fields.
-        - `precomputed_gvs`: Precomputed values of the GVs to use.
-        - `correction_scaling`: Scale the corrections by this value. Typically
-            want this 0<=correction_scaling<=1. Useful for homotopy studies.
+        Construct a VolumeFinder object (derived from FanRoots) to
+        solve for heights/kahler parameters satisfying
+        ``divisor_volumes = target``.
 
-        Also see FanRoots - every other keyword argument passed to VolumeFinder
-        will be passed along to FanRoots.
+        Every other keyword argument is passed along to FanRoots.
 
-        **Returns:**
-        The VolumeFinder class object to handle optimizing the divisor volumes.
+        Parameters
+        ----------
+        target : np.ndarray
+            The target divisor volumes.
+        heights0 : ArrayLike, optional
+            Starting value of h to use.
+        step_taking_schedule : list, optional
+            A schedule setting the step taking method. Requires a list
+            of tuples. Use method tuple[1] if check tuple[0] passes.
+            Checks in order of the list.
+        learning_rate : float, optional
+            Scale down the proposed step by this factor, before doing
+            any step size optimization. Normally paired with trivial
+            step size optimization (always accept proposed step).
+
+        Returns
+        -------
+        VolumeFinder
+            The VolumeFinder instance for optimizing divisor volumes.
         """
 
         self._target = target
@@ -155,13 +157,14 @@ def always_true(opt):
 # ----------------
 def fct(optimizer, h):
     """
-    Function to find a root of,
-        f(h) = \\tau(h) - target.
-    """      
+    Function to find a root of: f(h) = \\tau(h) - target.
+    """
     return optimizer.div_vols(h,extrapolate=True)-optimizer.target
 
 def jac(optimizer, h, extrapolate=False):
-    if (not extrapolate) and (not optimizer.triang.secondary_cone().contains(h)):
+    if (not extrapolate) and (
+        not optimizer.triang.secondary_cone().contains(h)
+    ):
         tri   = optimizer.vc.triangulate(heights=h)
         kappa = tri.intersection_numbers(in_basis=True,
                                          pushed_down=True,
@@ -170,6 +173,6 @@ def jac(optimizer, h, extrapolate=False):
         kappa = optimizer.kappa
 
     t = optimizer.glsm@h
-    A = (optimizer.kappa@t)
+    A = (kappa@t)
 
     return A@optimizer.glsm

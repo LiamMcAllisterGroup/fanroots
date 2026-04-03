@@ -24,40 +24,33 @@ import numpy as np
 
 def propose_gradient_descent(optimizer):
     """
-    **Description:**
-    We solve F(h, x) = 0 using gradient descent, where
-        - h are the heights (point in the fan) and
-        - x are some optional other parameters.
+    Propose a step h->h+step using gradient descent.
 
-    (
-    In case F is complex, we split the real/imaginary components, effectively
-    solving
+    Solve F(h, x) = 0 using gradient descent, where h are the heights
+    (point in the fan) and x are some optional other parameters.
+
+    In case F is complex, we split the real/imaginary components,
+    effectively solving
         F'(h, x) = [Re(F(h,x)); Im(F(h,x))] = 0.
     This requires modifying
         J'(h, x) = [Re(J(h,x)); Im(J(h,x))]
-    )
 
     This really solves the least squares problem
         argmin S = argmin \\sum_i F_i(x)^2.
     It does so via stepping
         step = - lr \\grad S = - lr jac.T @ F(x)
 
-    **Arguments:**
-    - `optimizer`: The FanRoots containing the current state.
+    Parameters
+    ----------
+    optimizer : FanRoots
+        The FanRoots instance containing the current state.
 
-    **Returns:**
-    - `step_t`: The step in K\"ahler parameters.
-    - `step_x`: If other_params is not None, then the step in other_params.
+    Returns
+    -------
+    step : ndarray
+        The proposed step in heights (and optionally other parameters,
+        concatenated).
     """
     # compute the step
     step = -optimizer.grad()
     return step#, None
-
-    #if not optimizer.only_heights:
-    #    h11 = len(optimizer.heights)
-    #    step_h     = step[:h11]
-    #    step_other = step[h11:]
-    #    return step_h, step_other
-    #else:
-    #    step_h     = step
-    #    return step_h

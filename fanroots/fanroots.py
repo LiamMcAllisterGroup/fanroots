@@ -45,6 +45,8 @@ warnings.filterwarnings(
 from fanroots.step_proposal import newton, gauss_newton, lma, gradient_descent
 from fanroots.step_size import naive, backtracking_line_search, shrink, ternary
 from fanroots.step_taking import flop, jump
+from numpy.typing import ArrayLike
+from collections.abc import Callable
 
 # misc helpers
 # ------------
@@ -68,20 +70,20 @@ class FanRoots:
     def __init__(self,
         # required
         vc: "VectorConfiguration",
-        fct: "Callable",
-        jac: "Callable",
+        fct: Callable,
+        jac: Callable,
 
         # halting
         tolerance:               float = 1e-4,
         min_step_size:           float = 1e-8,
         growth_demand_timescale: float = float('inf'),
-        user_halting_fct:   "Callable" = None,
+        user_halting_fct:     Callable = None,
 
         # initial parameters
-        heights0: "ArrayLike" = None,
-        other0:   "ArrayLike" = None,
-        triang:         "Fan" = None,
-        kappa:     "ArryLike" = None,
+        heights0: ArrayLike = None,
+        other0:   ArrayLike = None,
+        triang:      "Fan" = None,
+        kappa:    ArrayLike = None,
 
         # step proposal/taking
         step_proposal        = "newton",
@@ -107,71 +109,114 @@ class FanRoots:
         reckless_mode: bool = False,
         verbosity: int       = 0):
         """
-        **Description:**
-        General purpose optimization method for finding the root of a function
-        f(h, x=None) where h are heights living in the secondary fan and x are
-        optional other arguments.
+        Root-find f(h, x=None) where h lives in the secondary fan.
 
-        Many functions will naturally operate on K\\"ahler parameters. These
-        can be found by mapping h -> t=GLSM@h. Call this mapping g.
+        General purpose optimization method for finding the root of a
+        function f(h, x=None) where h are heights living in the
+        secondary fan and x are optional other arguments.
 
-        This can be used to
-            - solve inverse-volume problems (find Kahler parameters for which
-              the divisor volumes take a user-requested value)
+        Many functions will naturally operate on Kahler parameters.
+        These can be found by mapping h -> t=GLSM@h.
+
+        This can be used to:
+            - solve inverse-volume problems (find Kahler parameters
+              for which divisor volumes take a user-requested value)
             - AdS precursors (D_T W = 0)
             - and more
 
-        The key difficult and reason why this class is necessary is that the
-        functional form of f can vary cone-by-cone.
+        The key difficulty and reason why this class is necessary is
+        that the functional form of f can vary cone-by-cone.
 
-        General purpose optimization method for functions piecewise defined on
-        a fan (i.e., functional form varies cone-by-cone).
-
-        **Arguments:**
-        - `vc`: The vector configuration.
-        - `fct`: The function to find root of. First argument is class instance.
-            Second argument is height vector. If extra parameters are being
-            carried around, then they are concatenated to the height vector.
-        - `jac`: The Jacobian of `fct`. First argument is class instance.
-            Second argument is height vector. If extra parameters are being
-            carried around, then they are concatenated to the height vector.
-        - `step_proposal`: The step proposal method. Anticipate taking a step
-            with this scaled down by a factor 0<r<=1. Takes this class object as
-            sole argument. Set as a string, either "newton" (for Newton's method),
-            "grad" (for gradient descent), or "lma" (for Levenberg-Marquardt
-            algorithm). N.B.: lma subsumes gradient Gauss-Newton (if lmbda=0) and
-            gradient descent (if lmbda->inf).
-        - `tolerance`: The tolerance to use. Accept a solution if
-            |fct(h)|_2 < tolerance
-        - `growth_demand_timescale`: Halt if residual doesn't decrease by 50%
-            after this number of steps.
-        - `user_halting_fct`: A function taking a single argument, the FanRoots
-            class, that halts the optimization if it evaluates True.
-        - `heights0`: Starting value of h to use.
-        - `others0`: Optional starting value of x to use. If not provided, then
-            no x-dependence is assumed.
-        - `triang`: The initial triangulation, corresponding to
-            vc.subdivide(heights). Can be computed on the fly, but that's less
-            efficient if running a batch of optimizers from same triangulation.
-        - `kappa`: The initial intersection numbers, corresponding to
-            triang.intersection_numbers(in_basis=True, pushed_down=True,
-            as_np_array=True). Can be computed on the fly, but that's less
-            efficient if running a batch of optimizers from same triangulation.
-        - `step_size_optimizer`: An optimizer for setting the step size, after a
-            proposal by `step_proposal`. Think backtracking line search.
-        - `step_taking_method`: The method for taking steps. Primarily
-            `bigstepper` and `flopper`. Primarily has efficiency implications
-            but also can lead to somewhat different trajectories.
-        - `step_taking_schedule`: A schedule setting the step taking method.
-            Requires a list of tuples. Use method tuple[1] if check tuple[0]
-            passes.
-        - `learning_rate`: Scale down the proposed step by this factor, before
-            doing any step size optimization. Normally paired with trivial step
-            size optimization (always accept proposed step).
-        - `history_level`: The level at which we record history. Higher means
-            recording more.
-        - `plotting`: Whether to plot diagnostics.
-        - `verbosity`: The verbosity level.
+        Parameters
+        ----------
+        vc : VectorConfiguration
+            The vector configuration.
+        fct : Callable
+            The function to find root of. First argument is class
+            instance. Second argument is height vector. If extra
+            parameters are being carried around, they are concatenated
+            to the height vector.
+        jac : Callable
+            The Jacobian of ``fct``. First argument is class instance.
+            Second argument is height vector. If extra parameters are
+            being carried around, they are concatenated to the height
+            vector.
+        tolerance : float, optional
+            The tolerance to use. Accept a solution if
+            |fct(h)|_2 < tolerance. Defaults to 1e-4.
+        min_step_size : float, optional
+            Minimum allowed step size. Defaults to 1e-8.
+        growth_demand_timescale : float, optional
+            Halt if residual doesn't decrease by 50% after this
+            number of steps. Defaults to inf.
+        user_halting_fct : Callable, optional
+            A function taking a single argument (the FanRoots
+            instance) that halts the optimization if it returns True.
+        heights0 : ArrayLike, optional
+            Starting value of h to use.
+        other0 : ArrayLike, optional
+            Starting value of x to use. If not provided, no
+            x-dependence is assumed.
+        triang : Fan, optional
+            The initial triangulation, corresponding to
+            vc.subdivide(heights). Can be computed on the fly, but
+            that's less efficient for batches starting from the same
+            triangulation.
+        kappa : ArrayLike, optional
+            The initial intersection numbers, corresponding to
+            triang.intersection_numbers(in_basis=True,
+            pushed_down=True, as_np_array=True). Can be computed on
+            the fly, but that's less efficient for batches.
+        step_proposal : str or Callable, optional
+            The step proposal method. Set as a string: "newton" (for
+            Newton's method), "grad" (for gradient descent), or "lma"
+            (for Levenberg-Marquardt algorithm). N.B.: lma subsumes
+            Gauss-Newton (lmbda=0) and gradient descent (lmbda->inf).
+            Note: lma is not yet implemented. Defaults to "newton".
+        step_size_optimizer : str or Callable, optional
+            An optimizer for setting the step size after a proposal by
+            ``step_proposal``. Think backtracking line search.
+            Defaults to "shrink".
+        step_taking_method : str or object, optional
+            The method for taking steps. Primarily ``bigstepper`` and
+            ``flopper``. Primarily has efficiency implications but can
+            also lead to somewhat different trajectories. Defaults to
+            "flop".
+        step_taking_schedule : list, optional
+            A schedule setting the step taking method. Requires a list
+            of tuples. Use method tuple[1] if check tuple[0] passes.
+        learning_rate : float, optional
+            Scale down the proposed step by this factor, before doing
+            any step size optimization. Normally paired with trivial
+            step size optimization (always accept proposed step).
+        use_momentum : bool, optional
+            Whether to use momentum. Defaults to True.
+        min_momentum : float, optional
+            Minimum allowed momentum. Defaults to 1e-6.
+        max_momentum : float, optional
+            Maximum allowed momentum. Defaults to 1.
+        momentum_penalty : float, optional
+            Factor by which to reduce momentum on bad steps.
+            Defaults to 0.5.
+        momentum_reward : float, optional
+            Factor by which to increase momentum on good steps.
+            Defaults to 1.5.
+        history_level : int, optional
+            The level at which we record history. Higher means more
+            recording. Defaults to 0.
+        plotting : bool, optional
+            Whether to plot diagnostics. Defaults to False.
+        plot_condition_num : bool, optional
+            Whether to include condition number in plots.
+            Defaults to False.
+        concerning_angle : float, optional
+            Angle threshold (radians) for recording large-angle steps.
+            Defaults to pi/2.
+        reckless_mode : bool, optional
+            If True, do not halt on undefined behavior like 1/0.
+            Defaults to False.
+        verbosity : int, optional
+            The verbosity level. Defaults to 0.
         """
         # parse string-specifications of step proposal and taking methods
         if step_proposal == "newton":
@@ -194,7 +239,6 @@ class FanRoots:
             self.step_proposal = step_proposal
             if learning_rate is None:
                 learning_rate = 1e-1
-            #raise ValueError("Step proposal method not known...")
 
         # this is ignored if step_taking_schedule is set...
         if (step_taking_method == "flop") or (step_taking_method == "floper"):
@@ -208,7 +252,9 @@ class FanRoots:
         if step_size_optimizer == "naive":
             self.step_size_optimizer = naive.naive_scaling
         elif step_size_optimizer == "bls":
-            self.step_size_optimizer = backtracking_line_search.backtracking_line_search
+            self.step_size_optimizer = (
+                backtracking_line_search.backtracking_line_search
+            )
         elif step_size_optimizer == "shrink":
             self.step_size_optimizer = shrink.shrink
         elif step_size_optimizer == "ternary":
@@ -247,7 +293,7 @@ class FanRoots:
         self.momentum_penalty = momentum_penalty
         self.momentum_reward = momentum_reward
 
-        # different methods for taking the step have different performance/results.
+        # different methods for taking steps have different performance
         if step_taking_schedule is None:
             step_taking_schedule = [[always_true, step_taking_method]]
     
@@ -292,7 +338,7 @@ class FanRoots:
         self.plotting   = plotting
         self.plot_names = [
             "\\sum_i res_i^2",
-            "Step Size",\
+            "Step Size",
             "delta Heading",
             "Momentum",
             "t_1 vs t_0"
@@ -305,11 +351,22 @@ class FanRoots:
         # misc/kwargs
         # -----------
         if reckless_mode and (verbosity >= 0):
-            print("By setting `reckless_mode=True`, you are explictly requesting")
-            print("that the optimizer does NOT halt upon undefined behavior like `1/0`.")
+            print(
+                "By setting `reckless_mode=True`, you are explictly requesting"
+            )
+            print(
+                "that the optimizer does NOT halt upon undefined behavior"
+                " like `1/0`."
+            )
             print()
-            print("In this case, there will be less certification that anything works...")
-            print("If this is intended, decrease the verbosity level to `-1` to silence this warning")
+            print(
+                "In this case, there will be less certification that anything"
+                " works..."
+            )
+            print(
+                "If this is intended, decrease the verbosity level to `-1`"
+                " to silence this warning"
+            )
         self.reckless_mode = reckless_mode
         self.verbosity = verbosity
 
@@ -353,11 +410,16 @@ class FanRoots:
         self._kappa_vals = None
 
         if val is None:
-            self.kappa  = self.triang.intersection_numbers(in_basis=True,
-                                                           pushed_down=True,
-                                                           as_np_array=True)
+            if not hasattr(self.triang, 'kappa'):
+                self.triang.kappa = self.triang.intersection_numbers(
+                    in_basis=True,
+                    pushed_down=True,
+                    as_np_array=True
+                )
+            self.kappa = self.triang.kappa
         else:
             self.kappa = val
+            self.triang.kappa = val
 
     def clear_local_cache(self,
         clear_momentum=False,
@@ -456,14 +518,16 @@ class FanRoots:
         status['finished']  = self.finished
         status['finished_reason'] = self.finished_reason
         status['res_norm']  = self.res_norm()
-        status['tolerance'] = self.tolerance
+        status['tol_sq (compare to res_norm)'] = self.tolerance
         status['learning_rate'] = self.learning_rate
         
         # last step status
         status['last_step_size']    = self.last_step_size
         status['last_step_success'] = self.last_step_success
 
-        status['heading']   = self.heading.tolist()
+        status['heading']   = (
+            self.heading.tolist() if self.heading is not None else None
+        )
         status['anc']       = self.anc
         
         # misc
@@ -473,7 +537,7 @@ class FanRoots:
         status['num_steps'] = self.num_steps
         status['num_flips'] = self.num_flips
         status['num_fct_calls'] = self.num_fct_calls
-        status['num_jac_calls'] = self.num_fct_calls
+        status['num_jac_calls'] = self._num_jac_calls
         
         return status
     status = get_status
@@ -575,7 +639,7 @@ class FanRoots:
         """
         Evaluate the function at the current location.
 
-        If you set a location, then evaluate the current function at the set location.
+        If a location is provided, evaluate the function there instead.
         """
         tic = time.time()
         
@@ -643,26 +707,26 @@ class FanRoots:
             # override with manually input location
             if use_actual_kappa:
                 # store the real values
-                h     = opt.heights
-                other = opt.other
-                tri   = opt.triang
-                kappa = opt.kappa
+                h     = self.heights
+                other = self.other
+                tri   = self.triang
+                kappa = self.kappa
 
                 # fake with new values
-                opt.heights = x[:self.num_vecs]
-                opt.other   = x[self.num_vecs:]
-                opt.set_triang()
-                opt.set_kappa()
+                self.heights = x[:self.num_vecs]
+                self.other   = x[self.num_vecs:]
+                self.set_triang()
+                self.set_kappa()
 
             f = self.fct(x)
             out = np.sum(np.square(f.real) + np.square(f.imag))
 
             if use_actual_kappa:
                 # reset
-                opt.heights = h
-                opt.other   = other
-                opt.triang  = tri
-                opt.kappa   = kappa
+                self.heights = h
+                self.other   = other
+                self.triang  = tri
+                self.kappa   = kappa
             # ^^^^ FUNCTION CALL ^^^^
 
             for warn in w:
@@ -688,7 +752,7 @@ class FanRoots:
 
     def grad(self):
         """
-        Some methods need the gradient of the objective (sum of squared residuals).
+        Compute the gradient of the objective (sum of squared residuals).
 
         TBH, here, one assumes you use *half* the sum of squared residuals.
         This is just a scaling that gets absorbed into the learning rate...
@@ -710,18 +774,13 @@ class FanRoots:
                 J = np.vstack((J.real, J.imag))
                 F = np.concatenate((F.real, F.imag))
 
-            for attempt in range(5):
-                with warnings.catch_warnings(record=True) as w:
-                    warnings.simplefilter("always")
-                    try:
-                        self._grad = J.T @ F
-                    except FloatingPointError:
-                        self._grad = None
-                if self._grad is not None:
-                    break
-                time.sleep(0.01)  # small wait before retry
-            else:
-                print("Repeated matmul warnings or errors")
+            try:
+                self._grad = J.T @ F
+            except FloatingPointError:
+                self._grad = None
+                self.finished_reason = "FloatingPointError in grad()"
+                self.finished = True
+                self.success  = False
 
         return self._grad
 
@@ -787,10 +846,7 @@ class FanRoots:
             if self.verbosity >= 2:
                 print("Deciding upon a step to propose...")
             tic = time.time()
-            #step, cond = self.compute_next_step()
             step = self.compute_next_step()
-
-            #self._condition_number = cond
             if self.only_heights:
                 step_t = step
             else:
@@ -800,7 +856,9 @@ class FanRoots:
             # shrink the step if it's significantly larger than previous one
             new_raw_step_size = np.linalg.norm(step_t)
             r = 1.5
-            if (self.last_step_size is not None) and (new_raw_step_size > r*self.last_step_size):
+            if (self.last_step_size is not None) and (
+                new_raw_step_size > r*self.last_step_size
+            ):
                 rat = r*self.last_step_size/new_raw_step_size
                 step_t *= rat
                 if not self.only_heights:
@@ -819,7 +877,7 @@ class FanRoots:
                 print(f"Attempting the step from x={self.x()} to x+{step}...")
             
             tic = time.time()
-            success, h, triang, kappa, anc = self.step_taking_method(self, step_t)
+            success, h, triang, anc = self.step_taking_method(self, step_t)
             if not self.only_heights:
                 other = self.other + step_other*anc['step_scaling']
             else:
@@ -834,12 +892,12 @@ class FanRoots:
 
             if prev_heading is not None:
                 delta_heading = np.dot(heading, prev_heading)
-                delta_heading = np.arccos(np.clip(delta_heading, -1.0, 1.0))  # avoid numerical issues
+                # avoid numerical issues
+                delta_heading = np.arccos(
+                    np.clip(delta_heading, -1.0, 1.0)
+                )
             else:
                 delta_heading = None
-
-            #if (delta_heading is not None) and (delta_heading>0.9*np.pi):
-            #    print(f"DANGEROUS CHANGE IN HEADING OF {delta_heading}")
 
             # update info
             self.num_steps  += 1
@@ -864,7 +922,9 @@ class FanRoots:
                     print("Not successful :(")
 
             # clear the cache
-            self.clear_local_cache(clear_momentum=False, clear_finished_state=False)
+            self.clear_local_cache(
+                clear_momentum=False, clear_finished_state=False
+            )
 
             # diagnostics for the step
             # ------------------------
@@ -874,7 +934,9 @@ class FanRoots:
             if self.last_step_size == 0:
                 self.step_overestimation = float('inf')
             else:
-                self.step_overestimation = self.last_proposal_size/self.last_step_size
+                self.step_overestimation = (
+                    self.last_proposal_size/self.last_step_size
+                )
             self.prev_heading = prev_heading
             self.heading      = heading
             self.delta_heading= delta_heading
@@ -895,8 +957,8 @@ class FanRoots:
                 # record the current parameters
                 self.history.append(self.x())
 
-            if (self.delta_heading is not None) and \
-                (self.delta_heading >= self.concerning_angle):
+            if (self.delta_heading is not None and
+                self.delta_heading >= self.concerning_angle):
                 # record steps with large changes in angle
                 self.history_largeangle.append(self.x())
 
@@ -918,7 +980,7 @@ class FanRoots:
             self.heights = h
             self.other   = other
             self.set_triang(triang)
-            self.set_kappa(kappa)
+            self.set_kappa(getattr(triang, 'kappa', None))
             self.anc     = anc
             if paranoid:
                 assert triang.is_fine()
@@ -929,20 +991,32 @@ class FanRoots:
 
                     # multiple hyperplane constraints :( quit
                     if len(problematic) > 1:
-                        raise ValueError(f"secondary cone didn't contain heights... violation={min(dists)}; {len(problematic)} constraints violated")
-                    # a SINGLE hyperplane constraint - push off the wall by a small amount
+                        raise ValueError(
+                            "secondary cone didn't contain heights..."
+                            f" violation={min(dists)};"
+                            f" {len(problematic)} constraints violated"
+                        )
+                    # a SINGLE hyperplane constraint - push off wall
                     else:
-                        n = triang.secondary_cone_hyperplanes(via_circuits=True)[problematic[0]]
+                        n = triang.secondary_cone_hyperplanes(
+                            via_circuits=True
+                        )[problematic[0]]
                         self.heights = self.heights + 1e-8*n/np.linalg.norm(n)
 
             # update residual norm in history
             self.history_res_norm.append(self.res_norm())
 
-            # if there was a warning in res_norm, then that artificially ends the run... only override
-            # finished if no such early halting occurred
+            # if there was a warning in res_norm, that artificially ends
+            # the run... only override finished if no such early halting
             if not self.finished:
-                if (len(self.history_res_norm) >= self.growth_demand_timescale) and\
-                    0.50*self.history_res_norm[-self.growth_demand_timescale] <= self.history_res_norm[-1]:
+                if (
+                    len(self.history_res_norm) >= self.growth_demand_timescale
+                    and (
+                        0.50 * self.history_res_norm[
+                            -self.growth_demand_timescale
+                        ] <= self.history_res_norm[-1]
+                    )
+                ):
                     # did not see growth over the demanded timescale
                     self.finished_reason = "didn't meet demanded timescale"
                     self.finished = True
@@ -958,10 +1032,10 @@ class FanRoots:
                         self.finished = True
                         self.success  = False
 
-                if (self.finished == False) and\
-                    (self._user_halting_fct is not None) and\
-                    (self._user_halting_fct(self) == True):
-                    # the optimzer wasn't naturally done but it was halted by user
+                if (not self.finished and
+                    self._user_halting_fct is not None and
+                    self._user_halting_fct(self) == True):
+                    # not naturally done, but halted by user
                     self.finished = True
         except ResNormError:
             pass
@@ -987,13 +1061,12 @@ class FanRoots:
         Compute the next step and, optionally, optimize the size
         (assumed scaled by alpha \\in (0,1])
         """
-        #naive_step, cond  = self.step_proposal(self)
         naive_step  = self.step_proposal(self)
         scaled_step = self.momentum * self.learning_rate * naive_step
 
         self.alpha  = self.step_size_optimizer(self, scaled_step)
         self.proposed_step   = self.alpha * scaled_step
-        return self.proposed_step#, cond
+        return self.proposed_step
 
     def update_step_taking_method(self):
         for i, (criteria, method) in enumerate(self.step_taking_schedule):
@@ -1056,11 +1129,10 @@ class FanRoots:
                     go.Scattergl(x=[], y=[], text=[], mode='lines+markers',
                         marker=dict(
                             size=6,
-                            symbol=(num if num is None else (num%len(plotly_symbols))),
-                            #color=[],  # This sets color gradient
-                            #colorscale='Greys',
-                            #cmin=0,
-                            #cmax=1,
+                            symbol=(
+                                num if num is None
+                                else (num%len(plotly_symbols))
+                            ),
                         ),
                         line=dict(width=1),
                         name = num_str
@@ -1069,7 +1141,11 @@ class FanRoots:
                 )['data'][-1]  # Store reference to the last added trace
             else:
                 line = self.fig['fig'].add_trace(
-                    go.Scattergl(y=[], mode='lines', line=dict(color='black'), name=num_str),
+                    go.Scattergl(
+                        y=[], mode='lines',
+                        line=dict(color='black'),
+                        name=num_str
+                    ),
                     row=1, col=1+i  # Plotly indexing starts at 1
                 )['data'][-1]  # Store reference to the last added trace
 
@@ -1079,7 +1155,11 @@ class FanRoots:
             if i==1:
                 # extra trace for step size... the proposed step size...
                 line = self.fig['fig'].add_trace(
-                    go.Scattergl(y=[], mode='lines', line=dict(color='black', dash='dash'), name=num_str + ' Proposed'),
+                    go.Scattergl(
+                        y=[], mode='lines',
+                        line=dict(color='black', dash='dash'),
+                        name=num_str + ' Proposed'
+                    ),
                     row=1, col=1+i  # Plotly indexing starts at 1
                 )['data'][-1]  # Store reference to the last added trace
                 self.fig_lines[-1].append(line)
@@ -1115,7 +1195,7 @@ class FanRoots:
             line.y = list(line.y) + [kahler[1]]
             line.text = list(line.text) + [N]
             n = len(line.x)
-            #line.marker.color = np.linspace(0.3, 1.0, n)
+
             line.marker.opacity = np.linspace(0.05, 1.0, n)
             if self.finished:
                 if not self.success:
@@ -1130,7 +1210,8 @@ class FanRoots:
 
     # misc
     # ----
-    def swarm(self, N, scale, max_N_misses=100, plotting=None, seed=None, verbosity=0):
+    def swarm(self, N, scale, max_N_misses=100, plotting=None,
+              seed=None, verbosity=0):
         if seed is None:
             seed = int(datetime.now().timestamp())
         rng = np.random.default_rng(seed=seed)
@@ -1145,7 +1226,9 @@ class FanRoots:
                 print(len(_swarm), N)
 
             # generate the new heights
-            new_heights = self.heights + rng.normal(scale=scale, size=len(self.heights))
+            new_heights = self.heights + rng.normal(
+                scale=scale, size=len(self.heights)
+            )
 
             # update the swarmling's variables according to new heights
             swarmling.heights = new_heights
@@ -1157,18 +1240,17 @@ class FanRoots:
                 # failed... retry
                 num_misses += 1
                 if num_misses > max_N_misses:
-                    raise Exception(f"Tried more than {max_N_misses} to make swarmlings... scale={scale} likely too high")
+                    raise Exception(
+                        f"Tried more than {max_N_misses} to make swarmlings"
+                        f"... scale={scale} likely too high"
+                    )
                 continue
-            swarmling.kappa  = swarmling.triang.intersection_numbers(
-                in_basis=True,
-                pushed_down=True,
-                as_np_array=True
-            )
-            swarmling._kappa_nz   = None
-            swarmling._kappa_vals = None
+            swarmling.set_kappa()
 
             # clear caches
-            swarmling.clear_local_cache(clear_momentum=True, clear_finished_state=True)
+            swarmling.clear_local_cache(
+                clear_momentum=True, clear_finished_state=True
+            )
             swarmling.clear_diagnostics()
             swarmling.clear_history()
 
@@ -1261,8 +1343,7 @@ class BatchOptimizer():
         # run in parallel
         if not serial:
             if self.plotting:
-                raise ValueError()
-                self.batch[0]._display_figures()
+                raise ValueError("Plotting is not supported in parallel mode.")
 
             HEARTBEAT_DIR = Path("/tmp/worker_heartbeats")
             HEARTBEAT_DIR.mkdir(exist_ok=True)
@@ -1306,7 +1387,9 @@ class BatchOptimizer():
                         f.flush()
                     return (i, None, e)
 
-            results = joblib.Parallel(n_jobs=-1, backend=backend, timeout=None, verbose=0)(
+            results = joblib.Parallel(
+                n_jobs=-1, backend=backend, timeout=None, verbose=0
+            )(
                 joblib.delayed(run_and_capture)(i)
                 for i, opt in enumerate(self.batch)
             )
@@ -1335,63 +1418,16 @@ class BatchOptimizer():
                 if err is None:
                     self.batch[i].load_state(state)
                     self.finished[i] = True
-                    #if self.verbosity >= 1:
-                    #    print(f"frac finished = {sum(self.finished)/len(self.finished)}", end='\r')
                 else:
                     print(f"Task {i} failed:")
                     print(f"  File: {getattr(err, 'exc_file', 'N/A')}")
                     print(f"  Function: {getattr(err, 'exc_func', 'N/A')}")
                     print(f"  Line number: {getattr(err, 'exc_lineno', 'N/A')}")
                     print(f"  Line of code: {getattr(err, 'exc_line', 'N/A')}")
-                    print(f"  Exception type: {getattr(err, 'exc_type_name', type(err).__name__)}")
+                    print(
+                        f"  Exception type: "
+                        f"{getattr(err, 'exc_type_name', type(err).__name__)}"
+                    )
                     print(f"  Exception value: {err}")
 
         return
-"""
-    def step(self, num=1, serial=False):
-        outputs = []
-
-        # run in series
-        if serial:
-            if self.plotting:
-                self.batch[0]._display_figures()
-            for i,optimizer in enumerate(self.batch):
-                if self.verbosity>=1:
-                    print(f"Running optimizer #{i}...",end="")
-                    t0 = time.time()
-                optimizer._step(num=num)
-                if self.verbosity>=1:
-                    t1 = time.time()
-                    print(f" finished in {t1-t0}s!")
-
-        # run in parallel
-        if not serial:
-            if self.plotting:
-                raise ValueError()
-                self.batch[0]._display_figures()
-
-            with concurrent.futures.ProcessPoolExecutor(mp_context=multiprocessing.get_context("fork")) as executor:
-                # submit with index to know which result belongs where
-                futures = {
-                    executor.submit(opt._step, num, return_full_state=True): i
-                    for i, opt in enumerate(self.batch)
-                }
-
-                # preallocate
-                #outputs = [None] * len(self.batch)
-
-                for future in concurrent.futures.as_completed(futures):
-                    i = futures[future]
-                    try:
-                        state = future.result()
-                        self.batch[i].load_state(state)
-                        self.finished[i] = True
-                        if self.verbosity >= 1:
-                            print(f"frac finished = {sum(self.finished)/len(self.finished)}", end='\r')
-                    except Exception as e:
-                        print(f"Task {i} failed with exception: {e}")
-                        #outputs[i] = None
-
-        # return status
-        return# outputs
-"""

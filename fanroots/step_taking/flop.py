@@ -26,43 +26,49 @@ import numpy as np
 
 class FlopStep:
     """
-    Method to make a `flop` step method, described below.
+    Step method that advances through the fan by flopping.
 
-    **Description:**
     Attempt to take a step t->t+r*step for r=1.
 
-    Restrict t to live in the (pushed down) secondary subfan of fine, regular
-    triangulations. I.e., it is valid K\"ahler parameters. Failure modes are:
-        1) t is outside the secondary subfan (doesn't define a subdivision)
+    Restrict t to live in the (pushed down) secondary subfan of fine,
+    regular triangulations (i.e., valid Kahler parameters). Failure
+    modes are:
+        1) t is outside the secondary subfan (doesn't define a
+           subdivision)
         2) t defines a non-triangulation subdivision
         3) t defines a non-fine triangulation
 
-    If a step fails for any of the above reasons, return last valid location.
+    If a step fails for any of the above reasons, return last valid
+    location.
 
-    **Arguments:**
-    - `vc`:     The vector configuration (defines the secondary subfan).
-    - `kahler`: The K\"ahler parameters to step from.
-    - `step`:   The requested step t->t+step.
-    - `min_step_size`: The minimum allowed step size (in terms of the requested
-                       step... i.e., in terms of r).
-    - `triang`: The triangulation defined by kahler.
-    - `kappa`:  The intersection numbers defined by triang. If none are
-                provided, then don't compute updates.
-    - `verbosity`: The verbosity level. Higher means more verbosity.
+    Parameters
+    ----------
+    max_num_flips : int, optional
+        Limit to taking <= this number of flips. Defaults to 1.
+    check_triang : bool, optional
+        Whether to check that triang is indeed defined by kahler,
+        i.e., triang=vc.subdivide(heights=vc.jorp(kahler)).
+        Defaults to False.
 
-    Custom:
-    - `max_num_flips`: Limit to taking <= this number of flips.
-    - `heights`: The initial heights = vc.jorp(kahler).
-    - `check_triang`: Whether to check that triang is indeed defined by kahler,
-                      triang=vc.subdivide(heights=vc.jorp(kahler))
+    Notes
+    -----
+    When called, the instance accepts:
+        optimizer : FanRoots
+            The FanRoots instance with current state (heights, triang,
+            min_step_size, verbosity, etc.).
+        step : ndarray
+            The requested step h->h+step.
 
-    **Returns:**
-    - `success`: Whether the step succeeded. I.e., whether some r>0 was found
-                 such that t->t+r*step is a valid step.
-    - `kahler`:  The K\"ahler parameters after the step.
-    - `triang`:  The triangulation defined by t (after the step).
-    - `kappa`:   The intersection numbers of triang.
-    - `anc`:     The anciliary data.
+    And returns:
+        success : bool
+            Whether some r>0 was found such that t->t+r*step is valid.
+        h : ndarray
+            The heights after the step.
+        triang : Fan
+            The triangulation at the new location. Kappa accessible
+            via triang.kappa (precomputed by flop_linear hooks).
+        anc : dict
+            Ancillary data.
     """
     def __init__(self, max_num_flips=1, check_triang=False):
         self.max_num_flips = max_num_flips
@@ -87,10 +93,7 @@ class FlopStep:
             h_init=h_curr,
             stop_at_deletion=True,
             max_N_flips=self.max_num_flips,
-
-            #kappa_init=optimizer.kappa,
             verbosity=optimizer.verbosity-1,
-            #print_progress=int(optimizer.verbosity>5),
             check_regularity=False
         )
         
@@ -100,16 +103,16 @@ class FlopStep:
         # check how far along the step we actually moved
         denom = np.dot(step,step)
         if denom == 0:
+            success   = False
+            r         = 0
             fail_mode = "hit wall of BG and projection led to non-fine triangulation"
             anc = {
                 'num_flips': num_flips,
-                #'heights': h_curr,
-                #'secondary_cone': sc,
                 'step_scaling': r,
                 'failure_mode': fail_mode, # None indicates success
                 }
 
-            return success, h_curr, triang, optimizer.triang.kappa, anc
+            return success, h_curr, triang, anc
 
         r = np.dot(h_curr-optimizer.heights,step)/denom
 
@@ -121,7 +124,11 @@ class FlopStep:
             # step h_curr + projected_step, instead of h_curr + step
             # the modifications ensure
             #     dot(n, h_curr + projected_step) = tau * np.linalg.norm(h_curr) > 0
-            projected_step   = step + (tau*np.linalg.norm(h_curr) - np.dot(n,h_target)) * n/np.dot(n,n)
+            projected_step   = (
+                step
+                + (tau*np.linalg.norm(h_curr) - np.dot(n, h_target))
+                * n / np.dot(n, n)
+            )
             projected_target = h_curr + projected_step
 
             # might have moved a triangulation...
@@ -136,8 +143,8 @@ class FlopStep:
                     optimizer.finished = True
         else:
             # determine if the step was a success
-            #if isinstance(status, Exception):
-            if np.linalg.norm(optimizer.heights-h_curr) < optimizer.min_step_size:
+            if (np.linalg.norm(optimizer.heights-h_curr)
+                    < optimizer.min_step_size):
                 success = False
             else:
                 success = True
@@ -146,17 +153,14 @@ class FlopStep:
             if success:
                 fail_mode = None
             else:
-                #fail_mode = status.args
                 fail_mode = "step too small"
                 if not optimizer.last_step_success:
                     optimizer.finished = True
 
         anc = {
             'num_flips': num_flips,
-            #'heights': h_curr,
-            #'secondary_cone': sc,
             'step_scaling': r,
             'failure_mode': fail_mode, # None indicates success
             }
 
-        return success, h_curr, triang, optimizer.triang.kappa, anc
+        return success, h_curr, triang, anc

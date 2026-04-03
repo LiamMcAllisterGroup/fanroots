@@ -25,40 +25,36 @@ import scipy as sp
 
 import warnings
 import time
-    
+
 def propose_gauss_newton(optimizer):
     """
-    **Description:**
+    Propose a step h->h+step using the Gauss-Newton algorithm.
+
     See https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm.
 
-    We solve F(h, x) = 0 using the Gauss-Newton algorithm for
-        - h the heights (point in the fan) and
-        - x some optional other parameters.
+    Solve F(h, x) = 0 using the Gauss-Newton algorithm, where h are
+    the heights (point in the fan) and x are some optional other
+    parameters.
 
-    (
-    In case F is complex, we split the real/imaginary components, effectively
-    solving
-        F'(h, x) = [Re(F(h,x)); Im(F(h,x))] = 0.
-    This requires modifying
-        J'(h, x) = [Re(J(h,x)); Im(J(h,x))]
-    )
-
-    In case F is complex, we split the real/imaginary components, effectively
-    solving
+    In case F is complex, we split the real/imaginary components,
+    effectively solving
         F'(h, x) = [Re(F(h,x)); Im(F(h,x))] = 0.
     This requires modifying
         J'(h, x) = [Re(J(h,x)); Im(J(h,x))]
 
-    Agrees with Levenberg–Marquardt algorithm (LMA) when that algorithm has
-    lambda=0.
+    Agrees with Levenberg-Marquardt algorithm (LMA) when that
+    algorithm has lambda=0.
 
-    **Arguments:**
-    - `optimizer`: The FanRoots optimizer containing the current state.
+    Parameters
+    ----------
+    optimizer : FanRoots
+        The FanRoots optimizer containing the current state.
 
-    **Returns:**
-    - `step`: The step in parameters. If there are more parameters than just
-        heights, then we concatenate the step in these parameters.
-    - `cond`: The condition number arising in the computation.
+    Returns
+    -------
+    step : ndarray
+        The step in parameters. If there are more parameters than
+        just heights, the step in those parameters is concatenated.
     """
     # fetch the value of the function of interest F (and its Jacobian, J)
     F = optimizer.fct()
@@ -93,5 +89,4 @@ def propose_gauss_newton(optimizer):
     else:
         step = np.linalg.solve(JTJ, -JTF)
 
-    #cond = np.linalg.cond(JTJ)
-    return step#, cond
+    return step

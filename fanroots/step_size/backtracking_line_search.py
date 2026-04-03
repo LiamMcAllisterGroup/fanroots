@@ -22,14 +22,16 @@
 import numpy as np
 
 def backtracking_line_search(optimizer, step, tau=0.5, c=0.5, beta=0.8):
-	res0 = optimizer.res_norm()
-	grad = optimizer.grad()
+    res0 = optimizer.res_norm()
+    grad = optimizer.grad()
 
-	alpha = 1
-	while True:
-		res = optimizer.res_norm(optimizer.x()+alpha*step)
-		gradient_term = c*alpha*np.dot(grad,step)
-		if res<=res0+gradient_term:
-			return alpha
+    alpha = 1
+    while True:
+        res = optimizer.res_norm(optimizer.x()+alpha*step)
+        gradient_term = c*alpha*np.dot(grad,step)
+        if res<=res0+gradient_term:
+            return alpha
 
-		alpha *= beta
+        alpha *= beta
+        if alpha < 1e-16:
+            return 0

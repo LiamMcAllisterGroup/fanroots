@@ -27,14 +27,15 @@ import numpy as np
 
 class JumpStep:
     """
-    Method to make a `jump` step method, described below.
+    Step method that advances through the fan by jumping directly.
 
-    **Description:**
     Attempt to take a step t->t+r*step for r=1.
 
-    Restrict t to live in the (pushed down) secondary subfan of fine, regular
-    triangulations. I.e., it is valid K\"ahler parameters. Failure modes are:
-        1) t is outside the secondary subfan (doesn't define a subdivision)
+    Restrict t to live in the (pushed down) secondary subfan of fine,
+    regular triangulations (i.e., valid Kahler parameters). Failure
+    modes are:
+        1) t is outside the secondary subfan (doesn't define a
+           subdivision)
         2) t defines a non-triangulation subdivision
         3) t defines a non-fine triangulation
 
@@ -43,24 +44,25 @@ class JumpStep:
         t->t+r*step
     Quit if r<min_step_size.
 
-    **Arguments:**
-    - `vc`:     The vector configuration (defines the secondary subfan).
-    - `kahler`: The K\"ahler parameters to step from.
-    - `step`:   The requested step t->t+step.
-    - `min_step_size`: The minimum allowed step size (in terms of the requested
-                       step... i.e., in terms of r).
-    - `triang`: The triangulation defined by kahler.
-    - `kappa`:  The intersection numbers defined by triang. Only used to know
-                if we should recompute the intersection numbers after stepping.
-    - `verbosity`: The verbosity level. Higher means more verbosity.
+    Notes
+    -----
+    When called, the instance accepts:
+        optimizer : FanRoots
+            The FanRoots instance with current state (heights, triang,
+            min_step_size, verbosity, etc.).
+        step : ndarray
+            The requested step h->h+step.
 
-    **Returns:**
-    - `success`: Whether the step succeeded. I.e., whether some r>0 was found
-                 such that t->t+r*step is a valid step.
-    - `kahler`:  The K\"ahler parameters after the step.
-    - `triang`:  The triangulation defined by t (after the step).
-    - `kappa`:   The intersection numbers of triang.
-    - `anc`:     The anciliary data.
+    And returns:
+        success : bool
+            Whether some r>0 was found such that t->t+r*step is valid.
+        h : ndarray
+            The heights after the step.
+        triang : Fan
+            The triangulation at the new location. Kappa accessible
+            via triang.kappa if precomputed.
+        anc : dict
+            Ancillary data.
     """
 
     def __init__(self):
@@ -86,17 +88,14 @@ class JumpStep:
                 # if we aren't an F(R)T, need to walk back
                 if not triang.is_fine():
                     triang    = None
-                    #fail_mode = "non-fine"
                     success   = False
                 elif not triang.is_triangulation():
                     triang    = None
-                    #fail_mode = "non-triangulation"
                     success   = False
 
             except ValueError:
                 # heights don't even define a regular fan
                 triang    = None
-                #fail_mode = "outside fan"
                 success   = False
 
             # break if the step was OK
@@ -122,11 +121,5 @@ class JumpStep:
         if triang is None:
             h      = optimizer.heights
             triang = optimizer.triang
-            kappa  = optimizer.kappa
-        else:
-            triang = triang
-            kappa = triang.intersection_numbers(in_basis=True,
-                                                pushed_down=True,
-                                                as_np_array=True)
 
-        return success, h, triang, kappa, anc
+        return success, h, triang, anc

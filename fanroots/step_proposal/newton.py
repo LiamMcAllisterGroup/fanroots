@@ -25,18 +25,16 @@ import scipy as sp
 
 def propose_newton(optimizer):
     """
-    **Description:**
-    We solve F(h, x) = 0 using Newton's method for root finding, where
-        - h are the heights (point in the fan) and
-        - x are some optional other parameters.
+    Propose a step h->h+step using Newton's method for root finding.
 
-    (
-    In case F is complex, we split the real/imaginary components, effectively
-    solving
+    Solve F(h, x) = 0 using Newton's method, where h are the heights
+    (point in the fan) and x are some optional other parameters.
+
+    In case F is complex, we split the real/imaginary components,
+    effectively solving
         F'(h, x) = [Re(F(h,x)); Im(F(h,x))] = 0.
     This requires modifying
         J'(h, x) = [Re(J(h,x)); Im(J(h,x))]
-    )
 
     This can be derived as:
         F(h+step_h, x+step_x) = F(h, x) + J(h, x)@[step_h, step_x] + ...
@@ -45,12 +43,16 @@ def propose_newton(optimizer):
     This is simple to solve for via least squares:
         step = lstsq(J, -F).
 
-    **Arguments:**
-    - `optimizer`: The FanRoots containing the current state.
+    Parameters
+    ----------
+    optimizer : FanRoots
+        The FanRoots instance containing the current state.
 
-    **Returns:**
-    - `step_t`: The step in K\"ahler parameters.
-    - `step_x`: If other_params is not None, then the step in other_params.
+    Returns
+    -------
+    step : ndarray
+        The proposed step. Contains the step in heights (and optionally
+        other parameters, concatenated).
     """
     # fetch the value of the function of interest F (and its Jacobian, J)
     F_h = optimizer.fct()
@@ -74,16 +76,6 @@ def propose_newton(optimizer):
         J_h = np.hstack([J_h, J_other])
 
     # solve via least squares
-    #step,res = np.linalg.lstsq(J_h, -F_h, rcond=None)[0:2]
     step,res = sp.linalg.lstsq(J_h, -F_h, lapack_driver='gelsy')[0:2]
-    #cond = np.linalg.cond(J_h)
-    return step#, cond
 
-    #if not optimizer.only_heights:
-    #    h11 = len(optimizer.heights)
-    #    step_h     = step[:h11]
-    #    step_other = step[h11:]
-    #    return step_h, step_other
-    #else:
-    #    step_h     = step
-    #    return step_h
+    return step

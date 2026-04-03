@@ -27,7 +27,7 @@ import warnings
 
 def lma_idk(F, J, lmbda, scaled):
     """
-    Compute Levenberg-Marquardt step using augmented least squares formulation
+    Compute Levenberg-Marquardt step using augmented least squares.
     """
     m, n = J.shape
 
@@ -43,20 +43,16 @@ def lma_idk(F, J, lmbda, scaled):
 
     # Solve the least squares problem ||A s - b||^2
     step, *_ = np.linalg.lstsq(A, b, rcond=None)
-    #cond = np.linalg.cond(A)
-    return step#, cond
+    return step
 
 def lma(F, J, JTF, lmbda, scaled):
     """
-    **Description:**
-    We solve F = 0 using the Levenberg–Marquardt algorithm (LMA), disjoint from
-    any fan considerations.
-    
-    Subsumes both Gauss-Newton (lmbda=0) and gradient descent (lmbda->inf;
-    lr=1/lmbda).
+    Solve F = 0 using the Levenberg-Marquardt algorithm (LMA).
 
-    **Method:**
-    (See https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm.)
+    Disjoint from any fan considerations. Subsumes both Gauss-Newton
+    (lmbda=0) and gradient descent (lmbda->inf; lr=1/lmbda).
+
+    See https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm.
 
     This really solves the least squares problem
         argmin S = argmin \\sum_i F_i(x)^2.
@@ -77,7 +73,7 @@ def lma(F, J, JTF, lmbda, scaled):
              + (J@step).T @ F
              + (J@step).T @ (J@step)
             =  F.T @ F
-             + 2 F.T @ J @ step 
+             + 2 F.T @ J @ step
              + step.T @ J.T @ J @ step
     This has dS/dstep given by
         dS/dstep = 2 F.T @ J + 2 J.T @ J @ step
@@ -85,16 +81,26 @@ def lma(F, J, JTF, lmbda, scaled):
         2 J.T @ J @ step == -F.T @ J
     ** AT THIS POINT, WE HAVE REDERIVED GAUSS-NEWTON **
 
-    The additive lmbda*L matrix is a semi-adhoc damping term, making this LMA.
+    The additive lmbda*L matrix is a semi-adhoc damping term, making
+    this LMA.
 
-    **Arguments:**
-    - `F`: The value of the function at the current location.
-    - `J`: The value of the Jacobian at the current location.
-    - `lmbda`: The damping factor/Marquardt parameter.
-    - `scaled`: If True, use D=diag(J.T@J). Otherwise, use D=1.
+    Parameters
+    ----------
+    F : ndarray
+        The value of the function at the current location.
+    J : ndarray
+        The value of the Jacobian at the current location.
+    JTF : ndarray
+        The product J.T @ F.
+    lmbda : float
+        The damping factor/Marquardt parameter.
+    scaled : bool
+        If True, use D=diag(J.T@J). Otherwise, use D=1.
 
-    **Returns:**
-    - `step`: The proposed step to take.
+    Returns
+    -------
+    step : ndarray
+        The proposed step to take.
     """
     JTJ = J.T@J
     if scaled:
@@ -111,41 +117,42 @@ def lma(F, J, JTF, lmbda, scaled):
     else:
         step = np.linalg.solve(M, -JTF)
 
-    #cond = np.linalg.cond(M)
-    return step#, cond
+    return step
 
 def propose_lma(optimizer, lmbda=0, scaled=False):
     """
-    **Description:**
+    Propose a step h->h+step using the Levenberg-Marquardt algorithm.
+
     See https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm.
     See https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm.
 
-    We solve F(h, x) = 0 using the Levenberg–Marquardt algorithm (LMA) for
-        - h the heights (point in the fan) and
-        - x some optional other parameters.
-    This is also known as damped least squares. This is a generalization of the
-    Gauss-Newton algorithm (lmbda=0) and gradient descent (lmbda>>0).
+    Solve F(h, x) = 0 using the Levenberg-Marquardt algorithm (LMA),
+    where h are the heights (point in the fan) and x are some optional
+    other parameters. Also known as damped least squares. Generalizes
+    the Gauss-Newton algorithm (lmbda=0) and gradient descent
+    (lmbda>>0).
 
-    (
-    In case F is complex, we split the real/imaginary components, effectively
-    solving
-        F'(h, x) = [Re(F(h,x)); Im(F(h,x))] = 0.
-    This requires modifying
-        J'(h, x) = [Re(J(h,x)); Im(J(h,x))]
-    )
-
-    In case F is complex, we split the real/imaginary components, effectively
-    solving
+    In case F is complex, we split the real/imaginary components,
+    effectively solving
         F'(h, x) = [Re(F(h,x)); Im(F(h,x))] = 0.
     This requires modifying
         J'(h, x) = [Re(J(h,x)); Im(J(h,x))]
 
-    **Arguments:**
-    - `optimizer`: The FanRoots optimizer containing the current state.
+    Parameters
+    ----------
+    optimizer : FanRoots
+        The FanRoots optimizer containing the current state.
+    lmbda : float, optional
+        The damping factor. Defaults to 0.
+    scaled : bool, optional
+        If True, use D=diag(J.T@J). Otherwise, use D=1.
+        Defaults to False.
 
-    **Returns:**
-    - `step_t`: The step in K\"ahler parameters.
-    - `step_x`: If other_params is not None, then the step in other_params.
+    Returns
+    -------
+    step : ndarray
+        The proposed step in heights (and optionally other parameters,
+        concatenated).
     """
     raise NotImplementedError("lambda setting isn't correct yet... must be dynamic")
     # fetch the value of the function of interest F (and its Jacobian, J)
@@ -170,16 +177,6 @@ def propose_lma(optimizer, lmbda=0, scaled=False):
         J_h = np.hstack([J_h, J_other])
 
     # compute the step
-    #step, cond = lma(F_h, J_h, optimizer.grad(), lmbda=lmbda, scaled=scaled)
     step = lma(F_h, J_h, optimizer.grad(), lmbda=lmbda, scaled=scaled)
 
-    return step#, cond
-
-    #if not optimizer.only_heights:
-    #    h11 = len(optimizer.heights)
-    #    step_h     = step[:h11]
-    #    step_other = step[h11:]
-    #    return step_h, step_other
-    #else:
-    #    step_h     = step
-    #    return step_h
+    return step
