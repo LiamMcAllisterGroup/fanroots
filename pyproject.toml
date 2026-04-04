@@ -21,11 +21,11 @@ dependencies = [
     "scipy",
     "joblib",
     "plotly",
+    "cytools>=1.4.7",
 ]
 requires-python = ">=3.9"
 
 [project.optional-dependencies]
-cytools = ["cytools"]
 test = ["pytest"]
 
 [project.urls]
