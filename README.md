@@ -1,7 +1,7 @@
 # fanroots
 *[Nate MacFadden](https://github.com/natemacfadden), Liam McAllister Group, Cornell*
 
-Root-finding and optimization for vector-valued functions defined piecewise over the secondary fan of a point or vector configuration. Designed for Kähler moduli stabilization (KMS) in string compactifications, where it delivers **order-of-magnitude speedups** over prior methods (those used in [arXiv:2406.13751](https://arxiv.org/abs/2406.13751)).
+Root-finding and optimization for vector-valued functions defined piecewise over the secondary fan of a point or vector configuration. Designed for Kähler moduli stabilization (KMS) in string compactifications, where it delivers **order-of-magnitude speedups** over prior methods ([arXiv:2406.13751](https://arxiv.org/abs/2406.13751)).
 
 ## The Problem
 
