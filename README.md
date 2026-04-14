@@ -18,7 +18,7 @@ The major complication in practice is the moderate-to-high dimension $\mathbb{R}
 
 A schedule can mix both strategies dynamically based on step size. Step proposals include Newton's method, Gauss-Newton, gradient descent, and Levenberg-Marquardt. Step sizes are tuned via backtracking line search, ternary search, or 'shrinking'.
 
-For functions depending on the intersection numbers, performance is further boosted by my recent development of a fast intersection number kernel in [CYTools](https://github.com/LiamMcAllisterGroup/cytools), since computation of the intersection numbers typically becomes the bottleneck for such cases.
+For functions depending on the intersection numbers, performance is further boosted by a recently developed fast intersection number kernel in [CYTools](https://github.com/LiamMcAllisterGroup/cytools), since computation of the intersection numbers typically becomes the bottleneck for such cases.
 
 ## Installation
 
