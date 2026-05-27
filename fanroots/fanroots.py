@@ -1,5 +1,6 @@
 # =============================================================================
-#    Copyright (C) 2026  Nate MacFadden for the Liam McAllister Group
+#    Copyright (C) 2026  Nate MacFadden and contributors
+#    Originally developed in the Liam McAllister Group at Cornell University.
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -254,13 +255,11 @@ class FanRoots:
         if step_size_optimizer == "naive":
             self.step_size_optimizer = naive.naive_scaling
         elif step_size_optimizer == "bls":
-            self.step_size_optimizer = (
-                backtracking_line_search.backtracking_line_search
-            )
+            self.step_size_optimizer = backtracking_line_search
         elif step_size_optimizer == "shrink":
-            self.step_size_optimizer = shrink.shrink
+            self.step_size_optimizer = shrink
         elif step_size_optimizer == "ternary":
-            self.step_size_optimizer = ternary.ternary
+            self.step_size_optimizer = ternary
         else:
             self.step_size_optimizer = step_size_optimizer
 
