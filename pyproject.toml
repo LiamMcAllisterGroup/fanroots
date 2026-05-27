@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fanroots"
-version = "0.0.1"
+version = "0.0.2"
 description = "Root-finding and optimization on polyhedral fans"
 authors = [{ name = "Nate MacFadden" }]
 readme = "README.md"
