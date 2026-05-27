@@ -108,7 +108,7 @@ def lma(F, J, JTF, lmbda, scaled):
     # squaring cond(J). For D=I this is the textbook stabilized form;
     # for D=diag(J.T@J), sqrt(D) is well-defined since D is PSD.
     if scaled:
-        d = np.diag(J.T @ J)
+        d = np.einsum('ij,ij->j', J, J)  # diag(J.T@J) without forming JTJ
         D_sqrt = np.sqrt(lmbda) * np.diag(np.sqrt(d))
     else:
         D_sqrt = np.sqrt(lmbda) * np.eye(J.shape[1])
@@ -119,7 +119,9 @@ def lma(F, J, JTF, lmbda, scaled):
 
     return step
 
-def propose_lma(optimizer, lmbda=0, scaled=False):
+def propose_lma(optimizer, lmbda=None, scaled=False,
+                lmbda_init=1e-3, lmbda_nu=10.0,
+                lmbda_min=1e-12, lmbda_max=1e12):
     """
     Propose a step h->h+step using the Levenberg-Marquardt algorithm.
 
@@ -142,11 +144,21 @@ def propose_lma(optimizer, lmbda=0, scaled=False):
     ----------
     optimizer : FanRoots
         The FanRoots optimizer containing the current state.
-    lmbda : float, optional
-        The damping factor. Defaults to 0.
+    lmbda : float | None, optional
+        The damping factor. If None (default), use dynamic Marquardt
+        update on optimizer.lmbda (recommended for true LMA behavior).
+        Pass an explicit value (e.g., 0 for Gauss-Newton, or a positive
+        constant for static ridge regression) to disable dynamic update.
     scaled : bool, optional
         If True, use D=diag(J.T@J). Otherwise, use D=1.
         Defaults to False.
+    lmbda_init : float, optional
+        Initial value of lmbda for dynamic mode. Defaults to 1e-3.
+    lmbda_nu : float, optional
+        Multiplicative factor for dynamic update (divide on success,
+        multiply on failure). Defaults to 10.
+    lmbda_min, lmbda_max : float, optional
+        Clamp the dynamic lmbda to this range. Defaults to [1e-12, 1e12].
 
     Returns
     -------
@@ -155,7 +167,22 @@ def propose_lma(optimizer, lmbda=0, scaled=False):
         Contains the step in heights (and optionally other parameters,
         concatenated).
     """
-    raise NotImplementedError("lambda setting isn't correct yet... must be dynamic")
+    # Dynamic-lambda LMA (default mode). Marquardt's update rule:
+    # divide lmbda by nu after a successful step, multiply by nu after a
+    # rejected step. Skip the very first call — no previous step to react to.
+    if lmbda is None:
+        if not hasattr(optimizer, 'lmbda'):
+            optimizer.lmbda = lmbda_init
+        if optimizer.num_steps > 0:
+            if optimizer.last_step_success:
+                optimizer.lmbda /= lmbda_nu
+            else:
+                optimizer.lmbda *= lmbda_nu
+            optimizer.lmbda = float(
+                np.clip(optimizer.lmbda, lmbda_min, lmbda_max)
+            )
+        lmbda = optimizer.lmbda
+
     # fetch the value of the function of interest F (and its Jacobian, J)
     F_h = optimizer.fct()
     J_h = optimizer.jac()

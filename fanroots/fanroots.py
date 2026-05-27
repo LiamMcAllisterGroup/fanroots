@@ -773,7 +773,7 @@ class FanRoots:
             else:
                 J = np.hstack(self.jac())
 
-            if np.any(np.iscomplex(J)):
+            if np.iscomplexobj(F) or np.iscomplexobj(J):
                 J = np.vstack((J.real, J.imag))
                 F = np.concatenate((F.real, F.imag))
 
