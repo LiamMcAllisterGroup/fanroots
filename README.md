@@ -28,7 +28,7 @@ For functions depending on the intersection numbers, performance is further boos
 pip install -e .
 ```
 
-Requires [regfans](https://github.com/natemacfadden/regfans). For string-theoretic applications, [CYTools](https://github.com/LiamMcAllisterGroup/cytools) is also required.
+Requires [regfans](https://github.com/natemacfadden/regfans). For string-theoretic applications (AKA all of them lol), [CYTools](https://github.com/LiamMcAllisterGroup/cytools) is also required.
 
 ## Usage
 
