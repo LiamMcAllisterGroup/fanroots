@@ -79,16 +79,8 @@ def propose_gauss_newton(optimizer):
     else:
         J = np.hstack([J_h, J_other])
 
-    # compute the step
-    # (solve J.T@J@step = -J.T@F via least squares)
-    JTJ = J.T@J
-    JTF = optimizer.grad()
-
-    if False:
-        step,res = np.linalg.lstsq(JTJ, -JTF, rcond=None)[0:2]
-    elif False:
-        step,res = sp.linalg.lstsq(JTJ, -JTF, lapack_driver='gelsy')[0:2]
-    else:
-        step = np.linalg.solve(JTJ, -JTF)
+    # Solve J @ step = -F via QR-pivoted lstsq, not (J.T@J)@step = -J.T@F.
+    # The normal-equations form squares cond(J) and loses signal at cond>=1e6.
+    step, *_ = sp.linalg.lstsq(J, -F, lapack_driver='gelsy')
 
     return step

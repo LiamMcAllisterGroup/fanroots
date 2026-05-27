@@ -411,16 +411,18 @@ class FanRoots:
         self._kappa_vals = None
 
         if val is None:
-            if not hasattr(self.triang, 'kappa'):
-                self.triang.kappa = self.triang.intersection_numbers(
+            # `triang.kappa` is an alias for `intersection_numbers` in cytools,
+            # so we can't reuse that name for our cached array. Use a private one.
+            if not hasattr(self.triang, '_fanroots_kappa'):
+                self.triang._fanroots_kappa = self.triang.intersection_numbers(
                     in_basis=True,
                     pushed_down=True,
                     as_np_array=True
                 )
-            self.kappa = self.triang.kappa
+            self.kappa = self.triang._fanroots_kappa
         else:
             self.kappa = val
-            self.triang.kappa = val
+            self.triang._fanroots_kappa = val
 
     def clear_local_cache(self,
         clear_momentum=False,

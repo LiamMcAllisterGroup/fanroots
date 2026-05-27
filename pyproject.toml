@@ -32,4 +32,4 @@ test = ["pytest"]
 Repository = "https://github.com/LiamMcAllisterGroup/fanroots"
 
 [tool.setuptools]
-packages = ["fanroots", "fanroots.step_proposal", "fanroots.step_size", "fanroots.step_taking"]
+packages = ["fanroots", "fanroots.step_proposal", "fanroots.step_size", "fanroots.step_taking", "fanroots.demo"]

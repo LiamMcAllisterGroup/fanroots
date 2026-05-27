@@ -103,20 +103,19 @@ def lma(F, J, JTF, lmbda, scaled):
     step : ndarray of shape (n,)
         The proposed step to take.
     """
-    JTJ = J.T@J
+    # Solve (J.T@J + lmbda*D)@step = -J.T@F via the augmented least-squares
+    # form ||[J; sqrt(lmbda)*sqrt(D)] @ step - [-F; 0]||^2, which avoids
+    # squaring cond(J). For D=I this is the textbook stabilized form;
+    # for D=diag(J.T@J), sqrt(D) is well-defined since D is PSD.
     if scaled:
-        D = np.diag(np.diag(JTJ))
+        d = np.diag(J.T @ J)
+        D_sqrt = np.sqrt(lmbda) * np.diag(np.sqrt(d))
     else:
-        D = np.identity(JTJ.shape[0])
-    
-    # solve (J.T@J + lmbda*L)@step = -J.T@F via least squares
-    M = JTJ + lmbda*D
-    if False:
-        step,res = np.linalg.lstsq(M, -JTF, rcond=None)[0:2]
-    elif False:
-        step,res = sp.linalg.lstsq(M, -JTF, lapack_driver='gelsy')[0:2]
-    else:
-        step = np.linalg.solve(M, -JTF)
+        D_sqrt = np.sqrt(lmbda) * np.eye(J.shape[1])
+
+    A = np.vstack([J, D_sqrt])
+    b = -np.concatenate([F, np.zeros(J.shape[1])])
+    step, *_ = sp.linalg.lstsq(A, b, lapack_driver='gelsy')
 
     return step
 
