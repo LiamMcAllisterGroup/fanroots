@@ -42,7 +42,7 @@ optimizer = FanRoots(
     fct=fct,
     jac=jac,
     step_proposal="newton",       # "newton", "gauss_newton", "grad", "lma"
-    step_size_optimizer="shrink", # "shrink", "backtracking", "ternary", "naive"
+    step_size_optimizer="shrink", # "shrink", "bls", "ternary", "naive"
     step_taking_method="jump",    # "jump", "flop"
     tolerance=1e-6,
 )
@@ -54,7 +54,7 @@ Key arguments (see `help(FanRoots)` for the full list):
 | Argument | Options | Description |
 |---|---|---|
 | `step_proposal` | `"newton"`, `"gauss_newton"`, `"grad"`, `"lma"` | Step direction method |
-| `step_size_optimizer` | `"shrink"`, `"backtracking"`, `"ternary"`, `"naive"` | Step size tuning |
+| `step_size_optimizer` | `"shrink"`, `"bls"`, `"ternary"`, `"naive"` | Step size tuning |
 | `step_taking_method` | `"jump"`, `"flop"` | How to move through the fan; overridden by `step_taking_schedule` for mixed strategies |
 | `learning_rate` | float | Scales the proposed step before size optimization |
 | `tolerance` | float | Halt when `\|fct(h)\|_2 < tolerance` |

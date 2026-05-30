@@ -175,7 +175,7 @@ class FanRoots:
             Newton's method), "grad" (for gradient descent), or "lma"
             (for Levenberg-Marquardt algorithm). N.B.: lma subsumes
             Gauss-Newton (lmbda=0) and gradient descent (lmbda->inf).
-            Note: lma is not yet implemented. Defaults to "newton".
+            Defaults to "newton".
         step_size_optimizer : str | Callable, optional
             An optimizer for setting the step size after a proposal by
             ``step_proposal``. Think backtracking line search.
