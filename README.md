@@ -3,13 +3,13 @@
 
 *Contributors: —*
 
-Root-finding and optimization for vector-valued functions defined piecewise over the secondary fan of a point or vector configuration. Designed for Kähler moduli stabilization (KMS) in string compactifications, where it delivers **order-of-magnitude speedups** over prior methods ([arXiv:2406.13751](https://arxiv.org/abs/2406.13751)).
+Root-finding and optimization for vector-valued functions defined piecewise over the secondary fan of a point or vector configuration. Designed for Kähler moduli stabilization (KMS) in string compactifications, where it delivers **order-of-magnitude speedups** over prior methods (i.e., those in [arXiv:2406.13751](https://arxiv.org/abs/2406.13751)).
 
 ## The Problem
 
-Given a vector/point configuration with $N$ elements, the secondary fan partitions $\mathbb{R}^N$ (or, for vector configurations, a convex subregion of this space) into convex 'secondary' cones. Call $\mathbb{R}^N$ 'height space'. This software is designed for continuous, differentiable functions whose analytic form may vary chamber-by-chamber. One example is KMS, which depends on the intersection numbers of the toric variety associated to each triangulation. These numbers change discretely as one crosses walls of the secondary fan, but the function remains smooth.
+Given a vector/point configuration with $N$ elements, the secondary fan partitions $\mathbb{R}^N$ (or, for vector configurations, a convex subregion of this space) into convex 'secondary' cones. Call $\mathbb{R}^N$ 'height space'. This software is designed for continuous, differentiable functions whose analytic form may vary chamber-by-chamber. One example is K\"ahler moduli stabilization, which depends on the intersection numbers of the toric variety associated to each triangulation. These numbers change discretely as one crosses walls of the secondary fan, but the function remains smooth.
 
-The major complication in practice is the moderate-to-high dimension $\mathbb{R}^N$ as well as the large number of chambers (depending roughly exponentially on N - see [arXiv:2008.01730](https://arxiv.org/abs/2008.01730), [arXiv:2309.10855](https://arxiv.org/abs/2309.10855), and [arXiv:2602.16909](https://arxiv.org/abs/2602.16909)). At $N$ of interest, there are far too many chambers to enumerate, so operations are instead taken locally.
+The major complication in practice is the moderate-to-high dimension $\mathbb{R}^N$ ($N\approx 200$) as well as the large number of chambers (depending roughly exponentially on N - see [arXiv:2008.01730](https://arxiv.org/abs/2008.01730), [arXiv:2309.10855](https://arxiv.org/abs/2309.10855), and [arXiv:2602.16909](https://arxiv.org/abs/2602.16909)). At $N$ of interest, there are far too many chambers to enumerate, so operations are instead taken locally.
 
 ## Algorithm
 
