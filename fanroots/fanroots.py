@@ -971,20 +971,20 @@ class FanRoots:
                 self.history_proposal.append(step)
                 self.history_successful_step.append(success)
             
-            if self.history_level >= 2:
-                # also record the triangulation, intersection numbers, and
-                # anciliary data
-                self.history_triang.append(triang)
-                self.history_kappa.append(kappa)
-                self.history_anc.append(anc)
-
             # update
             self.last_step_success = success
             self.heights = h
             self.other   = other
             self.set_triang(triang)
-            self.set_kappa(getattr(triang, 'kappa', None))
+            self.set_kappa(getattr(triang, '_fanroots_kappa', None))
             self.anc     = anc
+
+            if self.history_level >= 2:
+                # also record the triangulation, intersection numbers, and
+                # anciliary data
+                self.history_triang.append(triang)
+                self.history_kappa.append(self.kappa)
+                self.history_anc.append(anc)
             if paranoid:
                 assert triang.is_fine()
                 dists = triang.secondary_cone_hyperplanes(via_circuits=True)@h
