@@ -55,32 +55,29 @@ def lma(F, J, JTF, lmbda, scaled):
 
     See https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm.
 
-    This really solves the least squares problem
-        argmin S = argmin \\sum_i F_i(x)^2.
-    It does so via stepping
-        (J^T@J + lmbda L)@step = J^T@F
-    for L a matrix either
-        - L = 1 or         # Levenberg
-        - L = diag(J^T@J). # Marquardt
+    This really solves the least squares problem::
 
-    This can be derived as (see wiki)
+        argmin S = argmin \\sum_i F_i(x)^2.
+
+    It does so via stepping::
+
+        (J^T@J + lmbda L)@step = J^T@F
+
+    for L a matrix either ``L = 1`` (Levenberg) or ``L = diag(J^T@J)``
+    (Marquardt).
+
+    This can be derived as (see wiki)::
+
         F(x+step) = F(x) + J(x)@step + ...
-    So
-        S(x+step) = \\sum_i (F_i(x) + (J(x)@step)_i + ...)**2
-            ~= = \\sum_i (F_i(x) + (J(x)@step)_i)**2
-            = (F + J@step).T @ (F + J@step)
-            =  F.T @ F
-             + F.T @ (J@step)
-             + (J@step).T @ F
-             + (J@step).T @ (J@step)
-            =  F.T @ F
-             + 2 F.T @ J @ step
-             + step.T @ J.T @ J @ step
-    This has dS/dstep given by
-        dS/dstep = 2 F.T @ J + 2 J.T @ J @ step
-    and, if dS/dstep=0, we get
-        2 J.T @ J @ step == -F.T @ J
-    ** AT THIS POINT, WE HAVE REDERIVED GAUSS-NEWTON **
+
+    So::
+
+        S(x+step) = \\sum_i (F_i(x) + (J(x)@step)_i)**2
+                  = F.T @ F + 2 F.T @ J @ step + step.T @ J.T @ J @ step
+
+    Setting dS/dstep = 0 gives ``J.T @ J @ step = -J.T @ F``,
+    which is the Gauss-Newton normal equation.
+    The additive ``lmbda*L`` term is the LMA damping.
 
     The additive lmbda*L matrix is a semi-adhoc damping term, making
     this LMA.
@@ -135,9 +132,12 @@ def propose_lma(optimizer, lmbda=None, scaled=False,
     (lmbda>>0).
 
     In case F is complex, we split the real/imaginary components,
-    effectively solving
+    effectively solving::
+
         F'(h, x) = [Re(F(h,x)); Im(F(h,x))] = 0.
-    This requires modifying
+
+    This requires modifying::
+
         J'(h, x) = [Re(J(h,x)); Im(J(h,x))]
 
     Parameters

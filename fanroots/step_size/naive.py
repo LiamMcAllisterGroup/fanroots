@@ -21,4 +21,22 @@
 # -----------------------------------------------------------------------------
 
 def naive_scaling(optimizer, step):
+    """
+    Return a step scaling of 1, accepting the full proposed step.
+
+    Used when the caller wants to skip any line search and take the
+    complete step as proposed by the step-proposal module.
+
+    Parameters
+    ----------
+    optimizer : FanRoots
+        The FanRoots instance owning the current state.
+    step : ndarray of shape (n,)
+        The proposed step direction.
+
+    Returns
+    -------
+    alpha : float
+        Always 1.
+    """
     return 1

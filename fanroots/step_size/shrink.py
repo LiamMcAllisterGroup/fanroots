@@ -21,6 +21,27 @@
 # -----------------------------------------------------------------------------
 
 def shrink(optimizer, step, tol=1e-8):
+    """
+    Halve the step scaling until the residual does not increase.
+
+    Repeatedly multiplies the scaling factor alpha by 0.5 until
+    r(x + alpha*step) <= r(x). Returns 0 if alpha falls below tol.
+
+    Parameters
+    ----------
+    optimizer : FanRoots
+        The FanRoots instance owning the current residual.
+    step : ndarray of shape (n,)
+        The proposed step direction (already scaled by momentum and lr).
+    tol : float, optional
+        Minimum allowed alpha before returning 0. Defaults to 1e-8.
+
+    Returns
+    -------
+    alpha : float
+        Scale factor in (0, 1] such that the residual does not increase,
+        or 0 if no such alpha >= tol was found.
+    """
     alpha = 1
     res0 = optimizer.res_norm(optimizer.x())
 

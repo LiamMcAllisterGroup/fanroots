@@ -1,0 +1,151 @@
+<script>
+if(typeof window.MathJax==='undefined'){window.MathJax={tex:{inlineMath:[['$','$']]},svg:{fontCache:'global'}};var _mjs=document.createElement('script');_mjs.src='https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js';_mjs.async=true;document.head.appendChild(_mjs);}
+</script>
+<div class="fr-fig mathjax_process" id="f1-workflow">
+<style>
+.fr-fig{position:relative;margin:1.5rem auto;font-family:"Helvetica Neue","Segoe UI",Arial,sans-serif;color:#1a1a1a}
+.fr-fig .fr-chart{position:relative;width:880px;max-width:100%;margin:0 auto}
+.fr-fig .fr-asvg{position:absolute;top:0;left:0;width:100%;pointer-events:none;z-index:0;overflow:visible}
+.fr-fig .fr-step{position:relative;z-index:1}
+.fr-fig .fr-step-hdr{display:flex;align-items:center;margin-bottom:16px;margin-top:22px}
+.fr-fig .fr-step-hdr span.lbl{font-size:9.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;white-space:nowrap;padding-right:11px}
+.fr-fig .fr-step-hdr span.rl{flex:1;height:1px}
+.fr-fig .blue  .lbl{color:#2B5F8E}.fr-fig .blue  .rl{background:#2B5F8E}
+.fr-fig .green .lbl{color:#3A7D5A}.fr-fig .green .rl{background:#3A7D5A}
+.fr-fig .bx{border-radius:7px;padding:11px 16px;box-shadow:0 2px 7px rgba(0,0,0,.10);text-align:center;background-clip:padding-box}
+.fr-fig .bx .t{font-size:12.5px;font-weight:700;margin-bottom:5px;letter-spacing:.15px}
+.fr-fig .bx .d{font-size:10px;line-height:1.65}
+.fr-fig .bx code{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;font-size:9.5px}
+.fr-fig .lb {background:#D6E8F5;border:1.3px solid #4A8ABF}.fr-fig .lb .t{color:#1B3A5C}.fr-fig .lb .d{color:#444}
+.fr-fig .lb2{background:#EAF3FB;border:1.3px solid #4A8ABF}.fr-fig .lb2 .t{color:#1B3A5C}.fr-fig .lb2 .d{color:#444}
+.fr-fig .db {background:#0F2942;border:1.5px solid #1a5080}.fr-fig .db .t{color:#fff}.fr-fig .db .d{color:#9EC5E8}.fr-fig .db code{color:#9EC5E8}
+.fr-fig .dg {background:#0D3320;border:1.5px solid #1d6037}.fr-fig .dg .t{color:#fff}.fr-fig .dg .d{color:#8FCF9F}
+.fr-fig .gap-sm{height:28px}.fr-fig .gap-md{height:38px}
+.fr-fig .fr-title{text-align:center;font-size:16.5px;font-weight:700;color:#1a1a1a;letter-spacing:.3px;margin-bottom:4px;margin-top:4px}
+#f1-workflow .fr-chart{width:760px}
+#f1-workflow .f1-row3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+#f1-workflow .f1-pad {padding:0 50px}
+#f1-workflow .f1-padl{padding:0 110px}
+#f1-workflow .f1-padxl{padding:0 160px}
+</style>
+
+<div class="fr-chart" id="f1-chart">
+  <svg class="fr-asvg" id="f1-asvg">
+    <defs>
+      <marker id="f1-ab"  markerWidth="8" markerHeight="6" refX="7.5" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2B5F8E"/></marker>
+      <marker id="f1-ag"  markerWidth="8" markerHeight="6" refX="7.5" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#3A7D5A"/></marker>
+      <marker id="f1-agr" markerWidth="8" markerHeight="6" refX="7.5" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#999"/></marker>
+    </defs>
+  </svg>
+
+  <div class="fr-title">fanroots &mdash; Package architecture</div>
+
+  <!-- Step 1 -->
+  <div class="fr-step">
+    <div class="fr-step-hdr blue"><span class="lbl">Step 1 &nbsp;&mdash;&nbsp; Inputs</span><span class="rl"></span></div>
+    <div class="f1-pad">
+      <div class="f1-row3">
+        <div class="bx lb" id="f1-vc">
+          <div class="t">VectorConfiguration</div>
+          <div class="d">secondary fan &middot; GLSM matrix<br><code>vc.gale().T</code></div>
+        </div>
+        <div class="bx lb" id="f1-fct">
+          <div class="t"><code>fct(optimizer, x)</code></div>
+          <div class="d">residual function F(h)</div>
+        </div>
+        <div class="bx lb" id="f1-jac">
+          <div class="t"><code>jac(optimizer, x)</code></div>
+          <div class="d">Jacobian J(h) of F</div>
+        </div>
+      </div>
+    </div>
+    <div class="gap-md"></div>
+    <div class="f1-padl">
+      <div class="bx db" id="f1-fr">
+        <div class="t">FanRoots</div>
+        <div class="d">triangulation &middot; &kappa; &middot; heights &middot; momentum &middot; history</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gap-md"></div>
+
+  <!-- Step 2 -->
+  <div class="fr-step">
+    <div class="fr-step-hdr blue"><span class="lbl">Step 2 &nbsp;&mdash;&nbsp; Components</span><span class="rl"></span></div>
+    <div class="f1-pad">
+      <div class="f1-row3">
+        <div class="bx lb2" id="f1-prop">
+          <div class="t">step_proposal</div>
+          <div class="d">newton &middot; gauss_newton<br>lma &middot; gradient_descent</div>
+        </div>
+        <div class="bx lb2" id="f1-sz">
+          <div class="t">step_size_optimizer</div>
+          <div class="d">shrink &middot; bls<br>ternary &middot; naive</div>
+        </div>
+        <div class="bx lb2" id="f1-tak">
+          <div class="t">step_taking_method</div>
+          <div class="d">FlopStep (<code>flip_linear</code>)<br>JumpStep (<code>subdivide</code>)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gap-md"></div>
+
+  <!-- Step 3 -->
+  <div class="fr-step">
+    <div class="fr-step-hdr blue"><span class="lbl">Step 3 &nbsp;&mdash;&nbsp; Optimisation loop</span><span class="rl"></span></div>
+    <div class="f1-padl">
+      <div class="bx db" id="f1-loop">
+        <div class="t">FanRoots._step()</div>
+        <div class="d">propose &rarr; scale by momentum&middot;lr &rarr; optimise &alpha; &rarr; take step &rarr; update triang + &kappa; &rarr; check convergence</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gap-md"></div>
+
+  <!-- Step 4 -->
+  <div class="fr-step">
+    <div class="fr-step-hdr green"><span class="lbl">Step 4 &nbsp;&mdash;&nbsp; Output</span><span class="rl"></span></div>
+    <div class="f1-padl">
+      <div class="bx dg" id="f1-out">
+        <div class="t">Converged solution</div>
+        <div class="d">heights h* &middot; triangulation &middot; &kappa; &middot; <code>get_status()</code></div>
+      </div>
+    </div>
+  </div>
+
+
+</div>
+</div>
+
+<script>
+(function(){
+  function drawF1(){
+    var chart=document.getElementById('f1-chart'),svg=document.getElementById('f1-asvg');
+    if(!chart||!svg)return;
+    while(svg.lastChild){if(svg.lastChild.tagName==='defs')break;svg.removeChild(svg.lastChild);}
+    var cr=chart.getBoundingClientRect(),H=chart.scrollHeight;
+    svg.setAttribute('height',H);svg.setAttribute('viewBox','0 0 '+cr.width+' '+H);
+    function g(id){var el=document.getElementById(id);if(!el)return null;var r=el.getBoundingClientRect();return{cx:r.left-cr.left+r.width/2,cy:r.top-cr.top+r.height/2,t:r.top-cr.top,b:r.bottom-cr.top,l:r.left-cr.left,r:r.right-cr.left};}
+    function arr(x1,y1,x2,y2,col,mk){var el=document.createElementNS('http://www.w3.org/2000/svg','line');el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2);el.setAttribute('stroke',col);el.setAttribute('stroke-width','1.6');el.setAttribute('marker-end','url(#'+mk+')');svg.appendChild(el);}
+    function seg(x1,y1,x2,y2,col,dash){var el=document.createElementNS('http://www.w3.org/2000/svg','line');el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2);el.setAttribute('stroke',col);el.setAttribute('stroke-width','1.6');if(dash)el.setAttribute('stroke-dasharray','5,3');svg.appendChild(el);}
+    var B='#2B5F8E',G='#3A7D5A',GR='#999';
+    var vc=g('f1-vc'),fct=g('f1-fct'),jac=g('f1-jac'),fr=g('f1-fr');
+    var prop=g('f1-prop'),sz=g('f1-sz'),tak=g('f1-tak'),loop=g('f1-loop'),out=g('f1-out');
+    // inputs → bus → FanRoots
+    if(vc&&fct&&jac&&fr){var by=vc.b+(fr.t-vc.b)/2;seg(vc.cx,vc.b,vc.cx,by,B,0);seg(fct.cx,fct.b,fct.cx,by,B,0);seg(jac.cx,jac.b,jac.cx,by,B,0);seg(vc.cx,by,jac.cx,by,B,0);arr(fr.cx,by,fr.cx,fr.t-2,B,'f1-ab');}
+    // FanRoots → bus → components
+    if(fr&&prop&&sz&&tak){var by2=fr.b+(prop.t-fr.b)/2;seg(fr.cx,fr.b,fr.cx,by2,B,0);seg(prop.cx,by2,tak.cx,by2,B,0);arr(prop.cx,by2,prop.cx,prop.t-2,B,'f1-ab');arr(sz.cx,by2,sz.cx,sz.t-2,B,'f1-ab');arr(tak.cx,by2,tak.cx,tak.t-2,B,'f1-ab');}
+    // components → merge → loop
+    if(prop&&sz&&tak&&loop){var mby=tak.b+(loop.t-tak.b)/2;seg(prop.cx,prop.b,prop.cx,mby,B,0);seg(sz.cx,sz.b,sz.cx,mby,B,0);seg(tak.cx,tak.b,tak.cx,mby,B,0);seg(prop.cx,mby,tak.cx,mby,B,0);arr(loop.cx,mby,loop.cx,loop.t-2,B,'f1-ab');}
+    // loop → output
+    if(loop&&out)arr(loop.cx,loop.b,out.cx,out.t-2,G,'f1-ag');
+  }
+  function setup(){if(window.MathJax&&MathJax.startup&&MathJax.startup.promise){MathJax.startup.promise.then(function(){requestAnimationFrame(function(){requestAnimationFrame(drawF1);});});}else{setTimeout(function(){requestAnimationFrame(drawF1);},400);}}
+  if(document.readyState==='complete'||document.readyState==='interactive')setup();else window.addEventListener('load',setup);
+  var _t;window.addEventListener('resize',function(){clearTimeout(_t);_t=setTimeout(function(){requestAnimationFrame(function(){requestAnimationFrame(drawF1);});},100);});
+})();
+</script>

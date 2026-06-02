@@ -31,14 +31,20 @@ def propose_gradient_descent(optimizer):
     (point in the fan) and x are some optional other parameters.
 
     In case F is complex, we split the real/imaginary components,
-    effectively solving
+    effectively solving::
+
         F'(h, x) = [Re(F(h,x)); Im(F(h,x))] = 0.
-    This requires modifying
+
+    This requires modifying::
+
         J'(h, x) = [Re(J(h,x)); Im(J(h,x))]
 
-    This really solves the least squares problem
+    This really solves the least squares problem::
+
         argmin S = argmin \\sum_i F_i(x)^2.
-    It does so via stepping
+
+    It does so via stepping::
+
         step = - lr \\grad S = - lr jac.T @ F(x)
 
     Parameters

@@ -22,13 +22,29 @@
 
 def ternary_raw(f, left, right, absolute_precision):
     """
-    Ternary search to minimize f over [left, right].
+    Find the minimum of a unimodal function on [left, right] by ternary search.
 
-    Taken from https://en.wikipedia.org/wiki/Ternary_search
+    Recursively bisects [left, right] into thirds and discards the third whose
+    endpoint has the higher function value, converging to within
+    absolute_precision of the true minimum. Adapted from
+    https://en.wikipedia.org/wiki/Ternary_search (adjusted to minimise, not
+    maximise).
 
-    Adjusted to minimize f, not maximize.
+    Parameters
+    ----------
+    f : Callable
+        Univariate, unimodal function to minimise on [left, right].
+    left : float
+        Left endpoint of the search interval.
+    right : float
+        Right endpoint of the search interval.
+    absolute_precision : float
+        Convergence threshold; search stops when right - left < absolute_precision.
 
-    Assumes f is unimodular in interval [left, right].
+    Returns
+    -------
+    x : float
+        Approximate location of the minimum of f on [left, right].
     """
     if abs(right - left) < absolute_precision:
         return (left + right) / 2
@@ -45,7 +61,27 @@ def ternary_raw(f, left, right, absolute_precision):
 
 def ternary(optimizer, step, absolute_precision=1e-1):
     """
-    ASSUME UNIMODULAR
+    Find the alpha in [0, 1] minimising r(x + alpha*step) by ternary search.
+
+    Assumes the residual profile along step is unimodal. Emits a warning if
+    absolute_precision is small enough that the expected recursion depth may
+    exceed Python's recursion limit.
+
+    Parameters
+    ----------
+    optimizer : FanRoots
+        The FanRoots instance owning the current residual.
+    step : ndarray of shape (n,)
+        The proposed step direction.
+    absolute_precision : float, optional
+        Search precision passed to ternary_raw; controls how tightly the
+        minimising alpha is located. Defaults to 0.1.
+
+    Returns
+    -------
+    alpha : float
+        Scale factor in [0, 1] that approximately minimises
+        r(x + alpha*step) along the given step direction.
     """
     import sys, math, warnings
     expected_depth = math.log(1 / absolute_precision) / math.log(1.5)

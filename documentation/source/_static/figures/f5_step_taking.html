@@ -1,0 +1,142 @@
+<script>
+if(typeof window.MathJax==='undefined'){window.MathJax={tex:{inlineMath:[['$','$']]},svg:{fontCache:'global'}};var _mjs=document.createElement('script');_mjs.src='https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js';_mjs.async=true;document.head.appendChild(_mjs);}
+</script>
+<div class="fr-fig mathjax_process" id="f5-taking">
+<style>
+.fr-fig{position:relative;margin:1.5rem auto;font-family:"Helvetica Neue","Segoe UI",Arial,sans-serif;color:#1a1a1a}
+.fr-fig .fr-chart{position:relative;width:880px;max-width:100%;margin:0 auto}
+.fr-fig .fr-asvg{position:absolute;top:0;left:0;width:100%;pointer-events:none;z-index:0;overflow:visible}
+.fr-fig .fr-step{position:relative;z-index:1}
+.fr-fig .fr-step-hdr{display:flex;align-items:center;margin-bottom:16px;margin-top:22px}
+.fr-fig .fr-step-hdr span.lbl{font-size:9.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;white-space:nowrap;padding-right:11px}
+.fr-fig .fr-step-hdr span.rl{flex:1;height:1px}
+.fr-fig .blue  .lbl{color:#2B5F8E}.fr-fig .blue  .rl{background:#2B5F8E}
+.fr-fig .green .lbl{color:#3A7D5A}.fr-fig .green .rl{background:#3A7D5A}
+.fr-fig .bx{border-radius:7px;padding:11px 16px;box-shadow:0 2px 7px rgba(0,0,0,.10);text-align:center;background-clip:padding-box}
+.fr-fig .bx .t{font-size:12.5px;font-weight:700;margin-bottom:5px;letter-spacing:.15px}
+.fr-fig .bx .d{font-size:10px;line-height:1.65}
+.fr-fig .bx code{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;font-size:9.5px}
+.fr-fig .lb {background:#D6E8F5;border:1.3px solid #4A8ABF}.fr-fig .lb .t{color:#1B3A5C}.fr-fig .lb .d{color:#444}
+.fr-fig .lb2{background:#EAF3FB;border:1.3px solid #4A8ABF}.fr-fig .lb2 .t{color:#1B3A5C}.fr-fig .lb2 .d{color:#444}
+.fr-fig .dg {background:#0D3320;border:1.5px solid #1d6037}.fr-fig .dg .t{color:#fff}.fr-fig .dg .d{color:#8FCF9F}
+.fr-fig .gh {background:#fafafa;border:1.3px dashed #bbb}.fr-fig .gh .t{color:#555;font-size:11px}.fr-fig .gh .d{color:#777;font-size:9.5px}
+.fr-fig .gap-sm{height:28px}.fr-fig .gap-md{height:38px}
+.fr-fig .fr-title{text-align:center;font-size:16.5px;font-weight:700;color:#1a1a1a;letter-spacing:.3px;margin-bottom:4px;margin-top:4px}
+#f5-taking .fr-chart{width:820px}
+#f5-taking .f5-in-pad {padding:0 140px}
+#f5-taking .f5-out-pad{padding:0 180px}
+#f5-taking .f5-row2   {display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:0 60px}
+/* 3-column row: regfans | schedule | cytools */
+#f5-taking .f5-sched-row{display:grid;grid-template-columns:1fr 2fr 1fr;gap:16px;align-items:center}
+</style>
+
+<div class="fr-chart" id="f5-chart">
+  <svg class="fr-asvg" id="f5-asvg">
+    <defs>
+      <marker id="f5-ab"  markerWidth="8" markerHeight="6" refX="7.5" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2B5F8E"/></marker>
+      <marker id="f5-ag"  markerWidth="8" markerHeight="6" refX="7.5" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#3A7D5A"/></marker>
+      <marker id="f5-agr" markerWidth="8" markerHeight="6" refX="7.5" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#999"/></marker>
+    </defs>
+  </svg>
+
+  <div class="fr-title">fanroots.step_taking &mdash; Methods</div>
+
+  <!-- Input -->
+  <div class="fr-step">
+    <div class="fr-step-hdr blue"><span class="lbl">Input</span><span class="rl"></span></div>
+    <div class="f5-in-pad">
+      <div class="bx lb" id="f5-inp">
+        <div class="t">Proposed step h &rarr; h + &Delta;h</div>
+        <div class="d">step_taking_schedule evaluated &mdash; first passing criterion selects the method</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gap-md"></div>
+
+  <!-- Methods + schedule row -->
+  <div class="fr-step">
+    <div class="fr-step-hdr blue"><span class="lbl">Step-taking method</span><span class="rl"></span></div>
+    <div class="f5-row2">
+      <div class="bx lb2" id="f5-flop">
+        <div class="t">FlopStep</div>
+        <div class="d">walk via <code>regfans.flip_linear</code><br>at most <code>max_num_flips</code> wall crossings<br>update triang + &kappa; incrementally<br><span style="font-size:9px;color:#888">efficient near convergence</span></div>
+      </div>
+      <div class="bx lb2" id="f5-jump">
+        <div class="t">JumpStep</div>
+        <div class="d">jump to h + &Delta;h directly<br><code>vc.subdivide(h + step)</code><br>halve step on invalid FRT<br><span style="font-size:9px;color:#888">robust for large steps</span></div>
+      </div>
+    </div>
+
+    <div class="gap-md"></div>
+
+    <!-- regfans | schedule | cytools in one row -->
+    <div class="f5-sched-row">
+      <div class="bx gh" id="f5-reg">
+        <div class="t">regfans</div>
+        <div class="d"><code>flip_linear</code><br>used by FlopStep</div>
+      </div>
+      <div class="bx gh" id="f5-sched">
+        <div class="t">step_taking_schedule</div>
+        <div class="d"><code>[(criteria_fn, method)]</code><br>first passing criterion wins<br><em>VolumeFinder:</em> JumpStep if last_step_size &geq; 1,<br>else FlopStep (max 10 flips)</div>
+      </div>
+      <div class="bx gh" id="f5-cy">
+        <div class="t">cytools / regfans</div>
+        <div class="d"><code>vc.subdivide</code><br>used by JumpStep</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gap-md"></div>
+
+  <!-- Output -->
+  <div class="fr-step">
+    <div class="fr-step-hdr green"><span class="lbl">Output</span><span class="rl"></span></div>
+    <div class="f5-out-pad">
+      <div class="bx dg" id="f5-out">
+        <div class="t">Updated state</div>
+        <div class="d">new heights h &middot; triangulation &middot; &kappa; &middot; <code>anc</code>: <code>num_flips</code>, <code>step_scaling</code></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+(function(){
+  function drawF5(){
+    var chart=document.getElementById('f5-chart'),svg=document.getElementById('f5-asvg');
+    if(!chart||!svg)return;
+    while(svg.lastChild){if(svg.lastChild.tagName==='defs')break;svg.removeChild(svg.lastChild);}
+    var cr=chart.getBoundingClientRect(),H=chart.scrollHeight;
+    svg.setAttribute('height',H);svg.setAttribute('viewBox','0 0 '+cr.width+' '+H);
+    function g(id){var el=document.getElementById(id);if(!el)return null;var r=el.getBoundingClientRect();return{cx:r.left-cr.left+r.width/2,cy:r.top-cr.top+r.height/2,t:r.top-cr.top,b:r.bottom-cr.top,l:r.left-cr.left,r:r.right-cr.left};}
+    function arr(x1,y1,x2,y2,col,mk){var el=document.createElementNS('http://www.w3.org/2000/svg','line');el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2);el.setAttribute('stroke',col);el.setAttribute('stroke-width','1.6');el.setAttribute('marker-end','url(#'+mk+')');svg.appendChild(el);}
+    function seg(x1,y1,x2,y2,col,dash){var el=document.createElementNS('http://www.w3.org/2000/svg','line');el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2);el.setAttribute('stroke',col);el.setAttribute('stroke-width','1.6');if(dash)el.setAttribute('stroke-dasharray','5,3');svg.appendChild(el);}
+    var B='#2B5F8E',G='#3A7D5A',GR='#999';
+    var inp=g('f5-inp'),flop=g('f5-flop'),jump=g('f5-jump');
+    var reg=g('f5-reg'),sched=g('f5-sched'),cy=g('f5-cy'),out=g('f5-out');
+    if(!inp||!flop||!jump||!sched||!out)return;
+    // darr: dashed arrow with arrowhead
+    function darr(x1,y1,x2,y2,col,mk){var el=document.createElementNS('http://www.w3.org/2000/svg','line');el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2);el.setAttribute('stroke',col);el.setAttribute('stroke-width','1.5');el.setAttribute('stroke-dasharray','5,3');el.setAttribute('marker-end','url(#'+mk+')');svg.appendChild(el);}
+    // inp → bus → flop, jump (solid blue)
+    var by=inp.b+(flop.t-inp.b)/2;
+    seg(inp.cx,inp.b,inp.cx,by,B,0);seg(flop.cx,by,jump.cx,by,B,0);
+    arr(flop.cx,by,flop.cx,flop.t-2,B,'f5-ab');arr(jump.cx,by,jump.cx,jump.t-2,B,'f5-ab');
+    // flop → regfans (dashed grey — "uses")
+    if(reg)darr(flop.cx,flop.b,reg.cx,reg.t-2,GR,'f5-agr');
+    // jump → cytools (dashed grey — "uses")
+    if(cy)darr(jump.cx,jump.b,cy.cx,cy.t-2,GR,'f5-agr');
+    // flop + jump → merge bus → schedule (solid blue — both methods register in schedule)
+    var mby=Math.max(flop.b,jump.b)+(sched.t-Math.max(flop.b,jump.b))/2;
+    seg(flop.cx,flop.b,flop.cx,mby,B,0);seg(jump.cx,jump.b,jump.cx,mby,B,0);
+    seg(flop.cx,mby,jump.cx,mby,B,0);arr(sched.cx,mby,sched.cx,sched.t-2,B,'f5-ab');
+    // schedule → output (green)
+    arr(sched.cx,sched.b,out.cx,out.t-2,G,'f5-ag');
+  }
+  function setup(){if(window.MathJax&&MathJax.startup&&MathJax.startup.promise){MathJax.startup.promise.then(function(){requestAnimationFrame(function(){requestAnimationFrame(drawF5);});});}else{setTimeout(function(){requestAnimationFrame(drawF5);},400);}}
+  if(document.readyState==='complete'||document.readyState==='interactive')setup();else window.addEventListener('load',setup);
+  var _t;window.addEventListener('resize',function(){clearTimeout(_t);_t=setTimeout(function(){requestAnimationFrame(function(){requestAnimationFrame(drawF5);});},100);});
+})();
+</script>
