@@ -61,4 +61,4 @@ Key arguments (see `help(FanRoots)` for the full list):
 | `min_step_size` | float | Halt if step shrinks below this |
 | `verbosity` | int | Controls diagnostic output |
 
-See `demo/volume_finder.py` for a complete example finding Kähler parameters that realize prescribed divisor volumes.
+See `tutorials/volume_finder.py` for a complete example finding Kähler parameters that realize prescribed divisor volumes.
