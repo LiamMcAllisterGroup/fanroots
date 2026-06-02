@@ -46,7 +46,7 @@ optimizer = FanRoots(
     step_taking_method="jump",    # "jump", "flop"
     tolerance=1e-6,
 )
-optimizer.run()
+optimizer.optimize()
 ```
 
 Key arguments (see `help(FanRoots)` for the full list):
@@ -61,4 +61,4 @@ Key arguments (see `help(FanRoots)` for the full list):
 | `min_step_size` | float | Halt if step shrinks below this |
 | `verbosity` | int | Controls diagnostic output |
 
-See `tutorials/volume_finder.py` for a complete example finding Kähler parameters that realize prescribed divisor volumes.
+See the `VolumeFinder` class in `fanroots/applications/volume_finder.py` for a complete example finding Kähler parameters that realize prescribed divisor volumes.
