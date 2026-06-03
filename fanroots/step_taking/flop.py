@@ -77,12 +77,8 @@ class FlopStep:
 
     def __call__(self, optimizer, step, project=False, tau=1e-4):
         # current, target heights
-        if False:
-            h_curr   = optimizer.vc.jorp(optimizer.kahler)
-            h_target = optimizer.vc.jorp(optimizer.kahler + step)
-        else:
-            h_curr   = optimizer.heights
-            h_target = optimizer.heights + step
+        h_curr   = optimizer.heights
+        h_target = optimizer.heights + step
 
         # check triangulation
         if self.check_triang:

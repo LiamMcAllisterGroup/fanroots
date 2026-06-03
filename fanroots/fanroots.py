@@ -560,9 +560,8 @@ class FanRoots:
         errors." - https://en.wikipedia.org/wiki/Condition_number
         """
         if self._condition_number is None:
-            # WILL NEVER OCCUR. WE NOW COMPUTE CONDITION NUMBERS IN THE STEP
-            # ROUTINE SO AS TO BETTER CAPTURE THE ACTUAL MATRIX IN STEP
-            # COMPUTATIONS
+            # computed lazily on first request and cached; reset by
+            # clear_local_cache()
             J = self.jac()
             if len(J)==2:
                 # above is equivalent to checking if self.only_heights=False

@@ -24,27 +24,6 @@
 import numpy as np
 import scipy as sp
 
-import warnings
-
-def lma_idk(F, J, lmbda, scaled):
-    """
-    Compute Levenberg-Marquardt step using augmented least squares.
-    """
-    m, n = J.shape
-
-    if scaled == False:
-        D_sqrt = np.sqrt(lmbda) * np.eye(n)
-    else:
-        # assumes D is diagonal or symmetric positive-definite
-        raise NotImplementedError()
-        D_sqrt = np.sqrt(lmbda) * sp.sqrtm(D)
-
-    A = np.vstack([J, D_sqrt])
-    b = -np.concatenate([F, np.zeros(n)])
-
-    # Solve the least squares problem ||A s - b||^2
-    step, *_ = np.linalg.lstsq(A, b, rcond=None)
-    return step
 
 def lma(F, J, JTF, lmbda, scaled):
     """
