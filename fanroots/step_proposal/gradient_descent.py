@@ -55,4 +55,4 @@ def propose_gradient_descent(optimizer):
     """
     # compute the step
     step = -optimizer.grad()
-    return step#, None
+    return step
