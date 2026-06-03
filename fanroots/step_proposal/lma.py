@@ -18,7 +18,7 @@
 #
 # -----------------------------------------------------------------------------
 # Description: Propose an optimization step h->h+step in a fan using the
-#              Levenberg–Marquardt algorithm (LMA).
+#              Levenberg-Marquardt algorithm (LMA).
 # -----------------------------------------------------------------------------
 
 import numpy as np
@@ -148,7 +148,7 @@ def propose_lma(optimizer, lmbda=None, scaled=False,
     """
     # Dynamic-lambda LMA (default mode). Marquardt's update rule:
     # divide lmbda by nu after a successful step, multiply by nu after a
-    # rejected step. Skip the very first call — no previous step to react to.
+    # rejected step. Skip the very first call -- no previous step to react to.
     if lmbda is None:
         if not hasattr(optimizer, 'lmbda'):
             optimizer.lmbda = lmbda_init

@@ -5,10 +5,10 @@ divisor-volume solver, on realistic targets ('starting guesses').
 
 ## What is measured
 
-For each of three Calabi–Yau geometries, both solvers are given the **same** target divisor volumes (points used in the construction of [dS vacua](https://arxiv.org/abs/2406.13751)) and must find Kähler parameters / heights realizing them. We report wall-clock time to convergence and the speedup.
+For each of three Calabi-Yau geometries, both solvers are given the **same** target divisor volumes (points used in the construction of [dS vacua](https://arxiv.org/abs/2406.13751)) and must find Kahler parameters / heights realizing them. We report wall-clock time to convergence and the speedup.
 
-- **FanRoots** — the `VolumeFinder` in this repo (`step_size_optimizer="shrink"`, otherwise default settings), started from the Delaunay triangulation.
-- **Prior method** — `prior_method.divisor_to_curve_alt`, the solver used in [2406.13751](https://arxiv.org/abs/2406.13751). Its numerical logic is verbatim (5th-order perturbative Newton with a tight-tolerance `least_squares` linear solve, adaptive step control, and flop detection).
+- **FanRoots** -- the `VolumeFinder` in this repo (`step_size_optimizer="shrink"`, otherwise default settings), started from the Delaunay triangulation.
+- **Prior method** -- `prior_method.divisor_to_curve_alt`, the solver used in [2406.13751](https://arxiv.org/abs/2406.13751). Its numerical logic is verbatim (5th-order perturbative Newton with a tight-tolerance `least_squares` linear solve, adaptive step control, and flop detection).
 
 ## Representative results
 
@@ -16,11 +16,11 @@ Measured on Linux x86_64, Python 3.12, 12 cores (numpy 2.4, scipy 1.17, cytools)
 
 | geometry | h11 | FanRoots | prior method | speedup |
 |----------|-----|----------|--------------|---------|
-| poly1    | 93  | ~1.9 s   | ~140 s       | ~75×    |
-| poly2    | 93  | ~1.8 s   | ~190 s       | ~104×   |
-| poly0    | 150 | ~7 s     | ~25 min      | ~200×   |
+| poly1    | 93  | ~1.9 s   | ~140 s       | ~75x    |
+| poly2    | 93  | ~1.8 s   | ~190 s       | ~104x   |
+| poly0    | 150 | ~7 s     | ~25 min      | ~200x   |
 
-All runs converge to matched accuracy (max |volume − target| ≈ 1e-6–1e-5). FanRoots times are stable medians; the prior-method time is a single run and is sensitive to BLAS threading / machine load (its inner solve is `scipy.least_squares`), so treat the speedup as order-of-magnitude rather than exact. At h11=150 the prior method is also memory-intensive (it can exhaust a ~16 GB machine); use `--fanroots-only` there if memory-constrained. Absolute times vary with hardware; reproduce locally with the command below.
+All runs converge to matched accuracy (max |volume - target| ~ 1e-6-1e-5). FanRoots times are stable medians; the prior-method time is a single run and is sensitive to BLAS threading / machine load (its inner solve is `scipy.least_squares`), so treat the speedup as order-of-magnitude rather than exact. At h11=150 the prior method is also memory-intensive (it can exhaust a ~16 GB machine); use `--fanroots-only` there if memory-constrained. Absolute times vary with hardware; reproduce locally with the command below.
 
 ## Running
 
@@ -31,14 +31,24 @@ python benchmarks/bench_volume_finder.py --fanroots-only # skip the slow baselin
 python benchmarks/bench_volume_finder.py --trials 5 --prior-max-seconds 3600
 ```
 
-FanRoots is timed over `--trials` runs (plus one warmup); the prior method is run once per geometry (it is deterministic and ~$10^2$× slower, so error bars are moot). The prior method on the h11=150 geometry takes ~25 min; use `--fanroots-only` for a quick check.
+FanRoots is timed over `--trials` runs (plus one warmup); the prior method is run once per geometry (it is deterministic and ~$10^2$x slower, so error bars are moot). The prior method on the h11=150 geometry takes ~25 min; use `--fanroots-only` for a quick check.
+
+## Kernel micro-benchmark
+
+`bench_div_vols.py` times the inner contraction `VolumeFinder.div_vols` runs on every function/Jacobian call -- `0.5 * kappa_{ijk} t_j t_k` -- comparing dense (`einsum`, `matmul`) against sparse (`np.add.at`, `np.bincount`) forms on the same geometries.
+
+```bash
+python benchmarks/bench_div_vols.py [--trials N]
+```
+
+At the targeted h11 (90+) the intersection-number tensor is only ~0.1-0.4 % dense, so the sparse kernels win by ~10x over dense matmul and ~100x over einsum, and `np.bincount` edges out `np.add.at`. That is why `div_vols` uses the sparse `bincount` form (no density-adaptive branch -- small-h11, where dense would win, is out of scope).
 
 ## Data and reproducibility
 
-`data.py` holds the pre-extracted problems as plain literals: the cut-polytope lattice **points**, the numeric GLSM/**divisor basis**, and the **target** volumes. The Delaunay start heights are recomputed from the points, so they are not stored. The harness rebuilds each geometry from the points using **cytools only** — no private dependencies and no network.
+`data.py` holds the pre-extracted problems as plain literals: the cut-polytope lattice **points**, the numeric GLSM/**divisor basis**, and the **target** volumes. The Delaunay start heights are recomputed from the points, so they are not stored. The harness rebuilds each geometry from the points using **cytools only** -- no private dependencies and no network.
 
-**Divisor basis.** All `in_basis` quantities (target, intersection numbers) depend on the gale/divisor basis, and cytools' default basis is *system-dependent*. So the saved numeric basis is pinned explicitly — on the vector configuration for FanRoots and via `set_divisor_basis` on the prior method's CalabiYau — rather than trusting the default to reproduce it. This is essential: the target is only meaningful in the basis it was generated in.
+**Divisor basis.** All `in_basis` quantities (target, intersection numbers) depend on the gale/divisor basis, and cytools' default basis is *system-dependent*. So the saved numeric basis is pinned explicitly -- on the vector configuration for FanRoots and via `set_divisor_basis` on the prior method's CalabiYau -- rather than trusting the default to reproduce it. This is essential: the target is only meaningful in the basis it was generated in.
 
 The targets themselves are generated by the (private) KMS pipeline
-(`kklt_lib`: cut polytope → conifold → dual-Coxeter target volumes); only the
+(`kklt_lib`: cut polytope -> conifold -> dual-Coxeter target volumes); only the
 resulting numeric problems are stored here, so the benchmark is self-contained.
