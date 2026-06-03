@@ -20,6 +20,11 @@
 # Description: Apply ternary search to optimize step sizes
 # -----------------------------------------------------------------------------
 
+import math
+import sys
+import warnings
+
+
 def ternary_raw(f, left, right, absolute_precision):
     """
     Ternary search to minimize f over [left, right].
@@ -47,7 +52,6 @@ def ternary(optimizer, step, absolute_precision=1e-1):
     """
     ASSUME UNIMODULAR
     """
-    import sys, math, warnings
     expected_depth = math.log(1 / absolute_precision) / math.log(1.5)
     if expected_depth > sys.getrecursionlimit() - 50:
         warnings.warn(
