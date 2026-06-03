@@ -6,13 +6,13 @@ from cytools import Polytope
 from fanroots.applications.volume_finder import VolumeFinder
 from fanroots.step_taking.flop import FlopStep
 
-# A 4d reflexive polytope with h11 = 101
+# a 4d reflexive polytope with h11 = 101
 _PTS = [[-1, -1, -1, -1], [4, -1, -1, -1], [-1, 4, -1, -1],
         [-1, -1, 4, -1], [-1, -1, -1, 4]]
 
 
 def _far_target(vc, seed=3):
-    # Divisor volumes at the farthest still-fine point along a fixed direction
+    # divisor volumes at the farthest still-fine point along a fixed direction
     # from the Delaunay start
     h0        = VolumeFinder(target=np.ones(1), vc=vc, history_level=0, verbosity=0).heights
     rng       = np.random.default_rng(seed)
@@ -53,7 +53,7 @@ def test_converges_across_many_chambers():
     n_flips = sum(int(a.get("num_flips", 0)) for a in vf.history_anc)
     assert n_flips >= 5
 
-    # Verify the solution independently from a freshly recomputed kappa
+    # verify the solution independently from a freshly recomputed kappa
     tri   = vc.triangulate(heights=vf.heights)
     kappa = tri.intersection_numbers(in_basis=True, pushed_down=True, as_np_array=True)
     t     = vc.proj(vf.heights)
