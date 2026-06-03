@@ -1345,10 +1345,10 @@ class BatchOptimizer():
             if self.plotting:
                 raise ValueError("Plotting is not supported in parallel mode.")
 
-            # Workers report success/exception via joblib's return tuples below.
-            # If OOM-killed workers (which return nothing) become a problem, a
+            # workers report success/exception via joblib's return tuples below;
+            # if OOM-killed workers (which return nothing) become a problem, a
             # per-task heartbeat file written here and checked after Parallel()
-            # would let us pinpoint which task died.
+            # would let us pinpoint which task died
             def run_and_capture(i):
                 opt = self.batch[i]
                 try:

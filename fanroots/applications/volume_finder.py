@@ -116,13 +116,13 @@ class VolumeFinder(FanRoots):
                                              as_np_array=True)
             return 0.5 * (kappa@t)@t
 
-        # Evaluate with the current chamber's cached kappa (self.kappa). If h is
+        # evaluate with the current chamber's cached kappa (self.kappa); if h is
         # outside this chamber's Kahler cone, this is a deliberate smooth
         # extrapolation of the chamber's volume polynomial (the exact /
-        # new-chamber case is the branch above). The 0.5 * kappa_{ijk} t_j t_k
+        # new-chamber case is the branch above). the 0.5 * kappa_{ijk} t_j t_k
         # contraction is done sparsely -- fastest by far at the high h11 (>~90)
         # targeted here, where kappa is ~0.1-0.4% dense (see benchmarks/);
-        # bincount beats add.at.
+        # bincount beats add.at
         i, j, k = self.kappa_nz()
         vals = self.kappa_vals()
         tau_curr = 0.5 * np.bincount(i, weights=vals * t[j] * t[k], minlength=len(t))
