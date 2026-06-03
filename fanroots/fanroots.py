@@ -1028,7 +1028,7 @@ class FanRoots:
                         self.finished = True
                         self.success  = True
                     elif not self.last_step_success:
-                        self.finished_reason = "last step failed"
+                        self.finished_reason = "stalled: step below min_step_size"
                         self.finished = True
                         self.success  = False
 
