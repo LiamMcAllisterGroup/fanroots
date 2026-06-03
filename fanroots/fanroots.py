@@ -621,7 +621,7 @@ class FanRoots:
 
     def kappa_vals(self):
         if self._kappa_vals is None:
-            self._kappa_vals = self.kappa[*self.kappa_nz()]
+            self._kappa_vals = self.kappa[self.kappa_nz()]
 
         return self._kappa_vals
 
