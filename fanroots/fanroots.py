@@ -34,9 +34,7 @@ plotly_symbols = SymbolValidator.values
 plotly_symbols = [i for i in plotly_symbols if isinstance(i,int) and i<100]
 
 # warnings/logs/debugging
-start_time = datetime.now().strftime('%Y%m%d_%H%M%S')
-import os, sys, traceback
-from pathlib import Path
+import sys, traceback
 import warnings
 warnings.filterwarnings(
     "ignore",
@@ -1347,26 +1345,14 @@ class BatchOptimizer():
             if self.plotting:
                 raise ValueError("Plotting is not supported in parallel mode.")
 
-            HEARTBEAT_DIR = Path("/tmp/worker_heartbeats")
-            HEARTBEAT_DIR.mkdir(exist_ok=True)
-
+            # Workers report success/exception via joblib's return tuples below.
+            # If OOM-killed workers (which return nothing) become a problem, a
+            # per-task heartbeat file written here and checked after Parallel()
+            # would let us pinpoint which task died.
             def run_and_capture(i):
                 opt = self.batch[i]
-
-                # write a dummy file, delete it at the end
-                hb_file = HEARTBEAT_DIR / f"task_{i}_{start_time}.txt"
-
-                with open(hb_file, "w") as f:
-                    f.write("START\n")
-                    f.write(f"{time.time()}\n")
-                    f.flush()
-
                 try:
                     state = opt._step(num=num, return_full_state=True)
-                    with open(hb_file, "a") as f:
-                        f.write(f"{time.time()}\n")
-                        f.write("END")
-                        f.flush()
                     return (i, state, None)
                 except Exception as e:
                     # get extra details for the exception
@@ -1383,10 +1369,6 @@ class BatchOptimizer():
                     e.exc_type_name = exc_type.__name__
                     e.exc_value = exc_value
 
-                    with open(hb_file, "a") as f:
-                        f.write(f"{time.time()}\n")
-                        f.write("EXCEPTION")
-                        f.flush()
                     return (i, None, e)
 
             results = joblib.Parallel(
@@ -1395,21 +1377,6 @@ class BatchOptimizer():
                 joblib.delayed(run_and_capture)(i)
                 for i, opt in enumerate(self.batch)
             )
-
-            # paranoid completion checking
-            # ----------------------------
-            # every file ended
-            for i in range(len(self.batch)):
-                hb_file = HEARTBEAT_DIR / f"task_{i}_{start_time}.txt"
-
-                # ensure the file has an end line
-                with open(hb_file, "r") as f:
-                    ended = False
-                    for line in f:
-                        ended = (line == "END") or (line == "EXCEPTION")
-
-                # delete the file
-                os.remove(hb_file)
 
             # ensure we have the expected number of outputs
             assert len(results) == len(self.batch)
