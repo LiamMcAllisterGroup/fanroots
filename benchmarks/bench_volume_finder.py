@@ -52,10 +52,8 @@ def reconstruct(prob):
     return p, vc, saved_basis
 
 
-def divisor_volumes(vc, heights, target_len):
-    """
-    Primary function.
-    """
+def divisor_volumes(vc, heights):
+    """In-basis divisor volumes 0.5 (kappa . t) . t -- the canonical verifier."""
     kappa = vc.triangulate(heights=heights).intersection_numbers(
         in_basis=True, pushed_down=True, as_np_array=True)
     t = vc.proj(np.asarray(heights, dtype=float))
@@ -63,9 +61,7 @@ def divisor_volumes(vc, heights, target_len):
 
 
 def time_fanroots(vc, target, heights0, trials):
-    """
-    Warmup once, then `trials` timed runs. Returns (median, min, max, info).
-    """
+    """Warmup once, then `trials` timed runs. Returns (median_seconds, info)."""
     times = []
     info = None
     for i in range(trials + 1):  # i == 0 is warmup
@@ -77,11 +73,11 @@ def time_fanroots(vc, target, heights0, trials):
         dt = time.perf_counter() - tic
         if i == 0:
             err = float(np.max(np.abs(
-                divisor_volumes(vc, vf.heights, len(target)) - target)))
+                divisor_volumes(vc, vf.heights) - target)))
             info = dict(reason=vf.finished_reason, steps=int(vf.num_steps), err=err)
         else:
             times.append(dt)
-    return statistics.median(times), min(times), max(times), info
+    return statistics.median(times), info
 
 
 def time_prior(p, target, max_seconds, basis):
@@ -113,7 +109,7 @@ def environment():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("indices", nargs="*", type=int,
-                    help="geometry indices to run (default: all in data/)")
+                    help="geometry indices to run (default: all)")
     ap.add_argument("--trials", type=int, default=5,
                     help="timed FanRoots runs per geometry (plus one warmup)")
     ap.add_argument("--fanroots-only", action="store_true",
@@ -139,14 +135,14 @@ def main():
         p, vc, basis = reconstruct(prob)
         heights0 = np.asarray(vc.subdivide().heights(), dtype=float)  # Delaunay start
 
-        fr_med, fr_min, fr_max, fr = time_fanroots(vc, target, heights0, args.trials)
+        fr_med, fr = time_fanroots(vc, target, heights0, args.trials)
         fr_ok = fr["reason"] == "converged" and fr["err"] < 1e-3
         fr_str = f"{fr_med:.2f}" + ("" if fr_ok else "!")
 
         if args.fanroots_only:
             pr_str, sp_str, pr_err_str = "-", "-", "-"
         else:
-            pr_dt, pr_err, pr = time_prior(p, target, args.prior_max_seconds, basis)
+            pr_dt, pr_err, _ = time_prior(p, target, args.prior_max_seconds, basis)
             if pr_err is None:
                 pr_str, sp_str, pr_err_str = f">{pr_dt:.0f}", "n/a", "FAIL"
             else:
