@@ -1,0 +1,33 @@
+name: fanroots
+channels:
+  - conda-forge
+dependencies:
+  # the cytools C-extension stack (ppl, normaliz, python-flint, ...) is finicky
+  # to build from pip alone, so its system libraries / bindings come from
+  # conda-forge -- this mirrors cytools' own environment.yml. fanroots itself is
+  # then `pip install -e .`-d on top (see CI)
+  - python
+  - numba
+  - numpy
+  - scipy
+  - normaliz
+  - cvxopt
+  - python-flint
+  - ppl
+  - joblib
+  - tqdm
+  - requests
+  - osqp
+  - plotly
+  - pytest
+  - pip
+  - pip:
+    - ortools
+    - triangulumancer
+    - pplpy
+    - pypalp
+    - qpsolvers
+    - cygv
+    - regfans
+    - latticepts
+    - cytools
