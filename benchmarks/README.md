@@ -18,9 +18,9 @@ Measured on Linux x86_64, Python 3.12, 12 cores (numpy 2.4, scipy 1.17, cytools)
 |----------|-----|----------|--------------|---------|
 | poly1    | 93  | ~1.9 s   | ~140 s       | ~75x    |
 | poly2    | 93  | ~1.8 s   | ~190 s       | ~104x   |
-| poly0    | 150 | ~7 s     | ~25 min      | ~200x   |
+| poly0    | 150 | ~6.7 s   | ~3560 s (~59 min) | ~530x |
 
-All runs converge to matched accuracy (max |volume - target| ~ 1e-6-1e-5). FanRoots times are stable medians; the prior-method time is a single run and is sensitive to BLAS threading / machine load (its inner solve is `scipy.least_squares`), so treat the speedup as order-of-magnitude rather than exact. At h11=150 the prior method is also memory-intensive (it can exhaust a ~16 GB machine); use `--fanroots-only` there if memory-constrained. Absolute times vary with hardware; reproduce locally with the command below.
+All runs converge to matched accuracy (max |volume - target| ~ 1e-6-1e-5). FanRoots times are medians over the timed runs; the prior-method time is a single run, sensitive to BLAS threading / machine load (its inner solve is `scipy.least_squares`). The advantage grows with h11 -- the prior method's per-iteration cost scales much worse -- so at the h11=90-150 regime of interest FanRoots is 2-3 orders of magnitude faster. At h11=150 the prior method is also memory-intensive (it can exhaust a ~16 GB machine); use `--fanroots-only` there if memory-constrained. Absolute times vary with hardware; reproduce locally with the command below.
 
 ## Running
 
@@ -31,7 +31,7 @@ python benchmarks/bench_volume_finder.py --fanroots-only # skip the slow baselin
 python benchmarks/bench_volume_finder.py --trials 5 --prior-max-seconds 3600
 ```
 
-FanRoots is timed over `--trials` runs (plus one warmup); the prior method is run once per geometry (it is deterministic and ~$10^2$x slower, so error bars are moot). The prior method on the h11=150 geometry takes ~25 min; use `--fanroots-only` for a quick check.
+FanRoots is timed over `--trials` runs (plus one warmup); the prior method is run once per geometry (it is deterministic and 2-3 orders of magnitude slower, so error bars are moot). The prior method on the h11=150 geometry takes ~1 hour; use `--fanroots-only` for a quick check.
 
 ## Kernel micro-benchmark
 
