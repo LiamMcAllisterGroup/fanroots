@@ -1084,7 +1084,17 @@ class FanRoots:
         if self.fig is None:
             self._create_figures()
 
-        display(self.fig['fig'])
+        # display is the IPython/Jupyter builtin; the plot is a plotly
+        # FigureWidget that only renders inline in a notebook. warn rather
+        # than crash the optimize loop if we are not in such an environment
+        try:
+            from IPython.display import display
+            display(self.fig['fig'])
+        except ImportError:
+            warnings.warn(
+                "plotting=True needs a Jupyter/IPython environment to show "
+                "the figure; continuing without display"
+            )
         self.fig['displayed'] = True
 
     def _create_figures(self, add_traces=True):
