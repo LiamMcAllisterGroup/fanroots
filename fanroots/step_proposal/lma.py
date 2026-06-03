@@ -25,7 +25,7 @@ import numpy as np
 import scipy as sp
 
 
-def lma(F, J, JTF, lmbda, scaled):
+def lma(F, J, lmbda, scaled):
     """
     Solve F = 0 using the Levenberg-Marquardt algorithm (LMA).
 
@@ -37,7 +37,7 @@ def lma(F, J, JTF, lmbda, scaled):
     This really solves the least squares problem
         argmin S = argmin \\sum_i F_i(x)^2.
     It does so via stepping
-        (J^T@J + lmbda L)@step = J^T@F
+        (J^T@J + lmbda L)@step = -J^T@F
     for L a matrix either
         - L = 1 or         # Levenberg
         - L = diag(J^T@J). # Marquardt
@@ -70,8 +70,6 @@ def lma(F, J, JTF, lmbda, scaled):
         The value of the function at the current location.
     J : ndarray of shape (m, n)
         The value of the Jacobian at the current location.
-    JTF : ndarray of shape (n,)
-        The product J.T @ F.
     lmbda : float
         The damping factor/Marquardt parameter.
     scaled : bool
@@ -184,6 +182,6 @@ def propose_lma(optimizer, lmbda=None, scaled=False,
         J_h = np.hstack([J_h, J_other])
 
     # compute the step
-    step = lma(F_h, J_h, optimizer.grad(), lmbda=lmbda, scaled=scaled)
+    step = lma(F_h, J_h, lmbda=lmbda, scaled=scaled)
 
     return step
