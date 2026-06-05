@@ -23,6 +23,33 @@
 import numpy as np
 
 def backtracking_line_search(optimizer, step, tau=0.5, c=0.5, beta=0.8):
+    """
+    Perform an Armijo backtracking line search to find an acceptable step size.
+
+    Reduces alpha by beta at each iteration until the Armijo sufficient-decrease
+    condition r(x + alpha*step) <= r(x) + c*alpha*dot(grad, step) is satisfied.
+    Returns 0 if alpha falls below 1e-16.
+
+    Parameters
+    ----------
+    optimizer : FanRoots
+        The FanRoots instance owning the current residual and gradient.
+    step : ndarray of shape (n,)
+        The proposed step direction.
+    tau : float, optional
+        Unused legacy parameter, kept for API compatibility. Defaults to 0.5.
+    c : float, optional
+        Sufficient-decrease constant for the Armijo condition. Defaults to 0.5.
+    beta : float, optional
+        Multiplicative reduction factor applied to alpha at each iteration.
+        Defaults to 0.8.
+
+    Returns
+    -------
+    alpha : float
+        Scale factor in (0, 1] satisfying the Armijo condition,
+        or 0 if no such alpha >= 1e-16 was found.
+    """
     res0 = optimizer.res_norm()
     grad = optimizer.grad()
 

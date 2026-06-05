@@ -34,10 +34,10 @@ class FlopStep:
     Restrict t to live in the (pushed down) secondary subfan of fine,
     regular triangulations (i.e., valid Kahler parameters). Failure
     modes are:
-        1) t is outside the secondary subfan (doesn't define a
-           subdivision)
-        2) t defines a non-triangulation subdivision
-        3) t defines a non-fine triangulation
+
+    1. t is outside the secondary subfan (doesn't define a subdivision).
+    2. t defines a non-triangulation subdivision.
+    3. t defines a non-fine triangulation.
 
     If a step fails for any of the above reasons, return last valid
     location.
@@ -72,10 +72,43 @@ class FlopStep:
             Ancillary data.
     """
     def __init__(self, max_num_flips=1, check_triang=False):
+        """Initialise FlopStep."""
         self.max_num_flips = max_num_flips
         self.check_triang = check_triang
 
     def __call__(self, optimizer, step, project=False, tau=1e-4):
+        """
+        Attempt to walk from the current heights to heights+step through the secondary fan.
+
+        Traverses chamber walls using optimizer.triang.flop_linear, stopping after at
+        most max_num_flips crossings. If the full step cannot be completed, returns
+        the last valid position reached along the step direction.
+
+        Parameters
+        ----------
+        optimizer : FanRoots
+            The FanRoots instance with current state (heights, triang,
+            min_step_size, verbosity, etc.).
+        step : ndarray of shape (N_vecs,)
+            The proposed step h->h+step.
+        project : bool, optional
+            If True, project onto the chamber wall instead of stopping when a
+            wall is encountered. Defaults to False.
+        tau : float, optional
+            Small push-off distance used when projecting onto a chamber wall.
+            Defaults to 1e-4.
+
+        Returns
+        -------
+        success : bool
+            True if the actual step size exceeds min_step_size.
+        h : ndarray of shape (N_vecs,)
+            Heights after the step.
+        triang : Fan
+            Triangulation at the new location.
+        anc : dict
+            Ancillary data with keys num_flips (int) and step_scaling (float).
+        """
         # current, target heights
         h_curr   = optimizer.heights
         h_target = optimizer.heights + step

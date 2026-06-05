@@ -1,0 +1,109 @@
+<script>
+if(typeof window.MathJax==='undefined'){window.MathJax={tex:{inlineMath:[['$','$']]},svg:{fontCache:'global'}};var _mjs=document.createElement('script');_mjs.src='https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js';_mjs.async=true;document.head.appendChild(_mjs);}
+</script>
+<div class="fr-fig mathjax_process" id="f3-proposal">
+<style>
+.fr-fig{position:relative;margin:1.5rem auto;font-family:"Helvetica Neue","Segoe UI",Arial,sans-serif;color:#1a1a1a}
+.fr-fig .fr-chart{position:relative;width:880px;max-width:100%;margin:0 auto}
+.fr-fig .fr-asvg{position:absolute;top:0;left:0;width:100%;pointer-events:none;z-index:0;overflow:visible}
+.fr-fig .fr-step{position:relative;z-index:1}
+.fr-fig .fr-step-hdr{display:flex;align-items:center;margin-bottom:16px;margin-top:22px}
+.fr-fig .fr-step-hdr span.lbl{font-size:9.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;white-space:nowrap;padding-right:11px}
+.fr-fig .fr-step-hdr span.rl{flex:1;height:1px}
+.fr-fig .blue .lbl{color:#2B5F8E}.fr-fig .blue .rl{background:#2B5F8E}
+.fr-fig .bx{border-radius:7px;padding:11px 16px;box-shadow:0 2px 7px rgba(0,0,0,.10);text-align:center;background-clip:padding-box}
+.fr-fig .bx .t{font-size:12.5px;font-weight:700;margin-bottom:5px;letter-spacing:.15px}
+.fr-fig .bx .d{font-size:10px;line-height:1.65}
+.fr-fig .bx code{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;font-size:9.5px}
+.fr-fig .lb {background:#D6E8F5;border:1.3px solid #4A8ABF}.fr-fig .lb .t{color:#1B3A5C}.fr-fig .lb .d{color:#444}
+.fr-fig .lb2{background:#EAF3FB;border:1.3px solid #4A8ABF}.fr-fig .lb2 .t{color:#1B3A5C}.fr-fig .lb2 .d{color:#444}
+.fr-fig .db {background:#0F2942;border:1.5px solid #1a5080}.fr-fig .db .t{color:#fff}.fr-fig .db .d{color:#9EC5E8}
+.fr-fig .gap-md{height:38px}
+.fr-fig .fr-title{text-align:center;font-size:16.5px;font-weight:700;color:#1a1a1a;letter-spacing:.3px;margin-bottom:4px;margin-top:4px}
+#f3-proposal .fr-chart{width:820px}
+#f3-proposal .f3-in-pad {padding:0 140px}
+#f3-proposal .f3-out-pad{padding:0 200px}
+#f3-proposal .f3-row3  {display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+</style>
+
+<div class="fr-chart" id="f3-chart">
+  <svg class="fr-asvg" id="f3-asvg">
+    <defs>
+      <marker id="f3-ab" markerWidth="8" markerHeight="6" refX="7.5" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2B5F8E"/></marker>
+    </defs>
+  </svg>
+
+  <div class="fr-title">fanroots.step_proposal &mdash; Methods</div>
+
+  <div class="fr-step">
+    <div class="fr-step-hdr blue"><span class="lbl">Inputs</span><span class="rl"></span></div>
+    <div class="f3-in-pad">
+      <div class="bx lb" id="f3-input">
+        <div class="t">Current state (h, F, J)</div>
+        <div class="d">$F(h)$ residual &nbsp;&middot;&nbsp; $J(h)$ Jacobian (shape $m \times n$) &nbsp;&middot;&nbsp; momentum, lr<br><em>Complex F, J: stack [Re; Im] rows before solving</em></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gap-md"></div>
+
+  <div class="fr-step">
+    <div class="fr-step-hdr blue"><span class="lbl">Step direction</span><span class="rl"></span></div>
+    <div class="f3-row3">
+      <div class="bx lb2" id="f3-gn">
+        <div class="t">Gauss-Newton / Newton</div>
+        <div class="d">$\min_p \|Jp + F\|_2$<br>QR-pivoted lstsq (<code>scipy gelsy</code>)</div>
+      </div>
+      <div class="bx lb2" id="f3-lma">
+        <div class="t">Levenberg-Marquardt</div>
+        <div class="d">$[J;\,\sqrt{\lambda}D]\,p = [-F;\,0]$<br>dynamic $\lambda$: &divide;&nu; on success, &times;&nu; on failure</div>
+      </div>
+      <div class="bx lb2" id="f3-gd">
+        <div class="t">Gradient descent</div>
+        <div class="d">$p = -J^T F$<br>steepest descent of $\tfrac{1}{2}\|F\|^2$</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gap-md"></div>
+
+  <div class="fr-step">
+    <div class="fr-step-hdr blue"><span class="lbl">Output</span><span class="rl"></span></div>
+    <div class="f3-out-pad">
+      <div class="bx db" id="f3-out">
+        <div class="t">Step direction p</div>
+        <div class="d">shape (n,) &mdash; passed to step_size optimiser for scaling by &alpha;&middot;m&middot;&eta;</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+(function(){
+  function drawF3(){
+    var chart=document.getElementById('f3-chart'),svg=document.getElementById('f3-asvg');
+    if(!chart||!svg)return;
+    while(svg.lastChild){if(svg.lastChild.tagName==='defs')break;svg.removeChild(svg.lastChild);}
+    var cr=chart.getBoundingClientRect(),H=chart.scrollHeight;
+    svg.setAttribute('height',H);svg.setAttribute('viewBox','0 0 '+cr.width+' '+H);
+    function g(id){var el=document.getElementById(id);if(!el)return null;var r=el.getBoundingClientRect();return{cx:r.left-cr.left+r.width/2,t:r.top-cr.top,b:r.bottom-cr.top};}
+    function arr(x1,y1,x2,y2){var el=document.createElementNS('http://www.w3.org/2000/svg','line');el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2);el.setAttribute('stroke','#2B5F8E');el.setAttribute('stroke-width','1.6');el.setAttribute('marker-end','url(#f3-ab)');svg.appendChild(el);}
+    function seg(x1,y1,x2,y2){var el=document.createElementNS('http://www.w3.org/2000/svg','line');el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2);el.setAttribute('stroke','#2B5F8E');el.setAttribute('stroke-width','1.6');svg.appendChild(el);}
+    var inp=g('f3-input'),gn=g('f3-gn'),lma=g('f3-lma'),gd=g('f3-gd'),out=g('f3-out');
+    if(!inp||!gn||!lma||!gd||!out)return;
+    // input → bus → 3 methods
+    var by=inp.b+(gn.t-inp.b)/2;
+    seg(inp.cx,inp.b,inp.cx,by);seg(gn.cx,by,gd.cx,by);
+    arr(gn.cx,by,gn.cx,gn.t-2);arr(lma.cx,by,lma.cx,lma.t-2);arr(gd.cx,by,gd.cx,gd.t-2);
+    // 3 methods → merge bus → output
+    var mby=Math.max(gn.b,lma.b,gd.b)+(out.t-Math.max(gn.b,lma.b,gd.b))/2;
+    seg(gn.cx,gn.b,gn.cx,mby);seg(lma.cx,lma.b,lma.cx,mby);seg(gd.cx,gd.b,gd.cx,mby);
+    seg(gn.cx,mby,gd.cx,mby);arr(out.cx,mby,out.cx,out.t-2);
+  }
+  function setup(){if(window.MathJax&&MathJax.startup&&MathJax.startup.promise){MathJax.startup.promise.then(function(){requestAnimationFrame(function(){requestAnimationFrame(drawF3);});});}else{setTimeout(function(){requestAnimationFrame(drawF3);},400);}}
+  if(document.readyState==='complete'||document.readyState==='interactive')setup();else window.addEventListener('load',setup);
+  var _t;window.addEventListener('resize',function(){clearTimeout(_t);_t=setTimeout(function(){requestAnimationFrame(function(){requestAnimationFrame(drawF3);});},100);});
+})();
+</script>

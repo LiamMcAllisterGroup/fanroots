@@ -38,9 +38,12 @@ def propose_gauss_newton(optimizer):
     parameters.
 
     In case F is complex, we split the real/imaginary components,
-    effectively solving
+    effectively solving::
+
         F'(h, x) = [Re(F(h,x)); Im(F(h,x))] = 0.
-    This requires modifying
+
+    This requires modifying::
+
         J'(h, x) = [Re(J(h,x)); Im(J(h,x))]
 
     Agrees with Levenberg-Marquardt algorithm (LMA) when that

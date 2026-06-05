@@ -35,15 +35,17 @@ class JumpStep:
     Restrict t to live in the (pushed down) secondary subfan of fine,
     regular triangulations (i.e., valid Kahler parameters). Failure
     modes are:
-        1) t is outside the secondary subfan (doesn't define a
-           subdivision)
-        2) t defines a non-triangulation subdivision
-        3) t defines a non-fine triangulation
 
-    If a step fails for any of the above reasons, try
-        r->0.5*r
-        t->t+r*step
-    Quit if r<min_step_size.
+    1. t is outside the secondary subfan (doesn't define a subdivision).
+    2. t defines a non-triangulation subdivision.
+    3. t defines a non-fine triangulation.
+
+    If a step fails for any of the above reasons, halve the step::
+
+        r -> 0.5 * r
+        t -> t + r * step
+
+    and retry. Quit if r < min_step_size.
 
     Notes
     -----
@@ -67,9 +69,37 @@ class JumpStep:
     """
 
     def __init__(self):
+        """Initialise JumpStep."""
         return
 
     def __call__(self, optimizer, step):
+        """
+        Jump directly to heights+step by recomputing the triangulation from scratch.
+
+        Calls optimizer.vc.subdivide(heights=h) at the target location. If the
+        resulting triangulation is not a fine regular triangulation, halves the step
+        and retries until the step size falls below min_step_size.
+
+        Parameters
+        ----------
+        optimizer : FanRoots
+            The FanRoots instance with current state (heights, triang,
+            min_step_size, verbosity, etc.).
+        step : ndarray of shape (N_vecs,)
+            The proposed step h->h+step.
+
+        Returns
+        -------
+        success : bool
+            True if a valid fine triangulation was found.
+        h : ndarray of shape (N_vecs,)
+            Heights after the step.
+        triang : Fan
+            Triangulation at the new location.
+        anc : dict
+            Ancillary data with keys step_scaling (float) and
+            failure_mode (str or None).
+        """
         kappa  = None
         triang = None
         h = optimizer.heights + step

@@ -58,9 +58,27 @@ class ResNormError(Exception):
     pass
 
 def always_true(*args, **kwargs):
+    """Always return True regardless of arguments."""
     return True
 
 def fanroots_from_state(state):
+    """
+    Reconstruct a FanRoots instance from a state dictionary.
+
+    Creates a new FanRoots object without calling ``__init__`` and populates
+    its ``__dict__`` from *state*, which must have been obtained via
+    ``FanRoots.get_state()``.
+
+    Parameters
+    ----------
+    state : dict
+        State dictionary previously returned by ``FanRoots.get_state()``.
+
+    Returns
+    -------
+    obj : FanRoots
+        Reconstructed optimiser instance.
+    """
     obj = FanRoots.__new__(FanRoots)
     obj.__dict__.update(state)
     return obj
@@ -68,6 +86,11 @@ def fanroots_from_state(state):
 # main method
 # -----------
 class FanRoots:
+    """
+    Root-finder for functions defined piecewise on a secondary fan.
+
+    See ``__init__`` for the full parameter reference.
+    """
     def __init__(self,
         # required
         vc: "VectorConfiguration",
@@ -144,7 +167,7 @@ class FanRoots:
             vector.
         tolerance : float, optional
             The tolerance to use. Accept a solution if
-            |fct(h)|_2 < tolerance. Defaults to 1e-4.
+            ``|fct(h)|_2 < tolerance``. Defaults to 1e-4.
         min_step_size : float, optional
             Minimum allowed step size. Defaults to 1e-8.
         growth_demand_timescale : float, optional
@@ -373,7 +396,9 @@ class FanRoots:
     # ---------------
     def __next__(self):
         """
-        Take a step and then return the status
+        Advance the optimiser by one step and return the status dict.
+
+        Raises StopIteration if the optimiser has already finished.
         """
         if self.finished:
             raise StopIteration()
@@ -381,6 +406,7 @@ class FanRoots:
         return self.step()
 
     def __deepcopy__(self, memo):
+        """Return a deep copy, skipping figure references."""
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
@@ -394,17 +420,46 @@ class FanRoots:
         return result
 
     def copy(self):
+        """
+        Return a deep copy of this optimiser.
+
+        Returns
+        -------
+        result : FanRoots
+            A new FanRoots instance with all state copied.
+        """
         return copy.deepcopy(self)
 
     # history/init
     # ------------
     def set_triang(self, val=None):
+        """
+        Set the current triangulation.
+
+        If val is None, recomputes the triangulation via vc.subdivide(self.heights).
+
+        Parameters
+        ----------
+        val : Fan, optional
+            The triangulation to use. Defaults to None (recompute).
+        """
         if val is None:
             self.triang = self.vc.subdivide(self.heights)
         else:
             self.triang = val
 
     def set_kappa(self, val=None):
+        """
+        Set the intersection-number tensor kappa.
+
+        If val is None, computes kappa from self.triang. Clears the non-zero
+        index cache regardless.
+
+        Parameters
+        ----------
+        val : ndarray of shape (h11, h11, h11), optional
+            The intersection-number tensor to use. Defaults to None (recompute).
+        """
         self._kappa_nz   = None
         self._kappa_vals = None
 
@@ -426,6 +481,7 @@ class FanRoots:
         clear_momentum=False,
         clear_finished_state=False
     ):
+        """Clear cached function/Jacobian/residual/gradient values."""
         self._fct_val  = None
         self._jac_val  = None
         self._condition_number = None
@@ -441,6 +497,7 @@ class FanRoots:
             self.success  = None
 
     def clear_diagnostics(self):
+        """Reset step counters and timing accumulators."""
         self.num_steps      = 0
         self.num_flips      = None
         self.num_fct_calls  = 0
@@ -464,6 +521,7 @@ class FanRoots:
         self.last_step_success  = True
 
     def clear_history(self):
+        """Clear the step-history lists."""
         self.history = []
         self.history_largeangle = []
         self.history_conditionnum = []
@@ -480,24 +538,73 @@ class FanRoots:
     # ----------
     @property
     def kahler(self):
+        """
+        Current Kahler parameters t = GLSM @ heights
+
+        Returns
+        -------
+        t : ndarray of shape (h11,)
+            The Kahler parameters.
+        """
         return self.glsm@self.heights
 
     @property
     def tau(self):
+        """
+        Current divisor-volume vector tau_i = 0.5 * (kappa @ t)_i * t^i
+
+        Returns
+        -------
+        tau : ndarray of shape (h11,)
+            The divisor-volume vector.
+        """
         t = self.kahler
         return 0.5 * (self.kappa@t)@t
 
     # status/diagnostics
     # ==================
     def get_state(self, deepcopy=False):
+        """
+        Return the full internal state of the optimiser as a dictionary.
+
+        Parameters
+        ----------
+        deepcopy : bool, optional
+            If True, return a deep copy of the state. Defaults to False.
+
+        Returns
+        -------
+        state : dict
+            The full __dict__ of the instance.
+        """
         if deepcopy:
             return copy.deepcopy(self.__dict__)
         return self.__dict__.copy()
 
     def load_state(self, state):
+        """
+        Restore the optimiser from a state dictionary.
+
+        Parameters
+        ----------
+        state : dict
+            A state dictionary previously obtained from get_state().
+        """
         self.__dict__.update(state)
 
     def load_heights_other(self, heights, other):
+        """
+        Reset to new heights and other parameters, clearing the local cache.
+
+        Recomputes the triangulation and kappa for the new heights.
+
+        Parameters
+        ----------
+        heights : ndarray
+            The new height vector.
+        other : ndarray or None
+            The new other-parameter vector, or None if not used.
+        """
         self.clear_local_cache(clear_momentum=True, clear_finished_state=True)
         self.heights = heights
         self.other   = other
@@ -506,7 +613,16 @@ class FanRoots:
 
     def get_status(self):
         """
-        Return the current status
+        Return a summary of the current optimiser state.
+
+        Returns
+        -------
+        status : dict
+            Dictionary with keys: heights, finished, finished_reason,
+            res_norm, tol_sq (compare to res_norm), learning_rate,
+            last_step_size, last_step_success, heading, anc,
+            step_taking_method_i, num_steps, num_flips, num_fct_calls,
+            num_jac_calls.
         """
         status = dict()
 
@@ -547,15 +663,15 @@ class FanRoots:
     # ----
     def condition_number(self):
         """
-        Basically, how well/ill condition the jacobian is for solving jac@x=b
+        Return the condition number of the current Jacobian.
 
-        "If the condition number is not significantly larger than one, the
-        matrix is well-conditioned, which means that its inverse can be
-        computed with good accuracy. If the condition number is very large,
-        then the matrix is said to be ill-conditioned. Practically, such a
-        matrix is almost singular, and the computation of its inverse, or
-        solution of a linear system of equations is prone to large numerical
-        errors." - https://en.wikipedia.org/wiki/Condition_number
+        Computed as sigma_max / sigma_min via SVD. Large values indicate
+        near-singularity; the step proposal may be unreliable.
+
+        Returns
+        -------
+        cond : float
+            Condition number of the Jacobian.
         """
         if self._condition_number is None:
             # computed lazily on first request and cached; reset by
@@ -580,11 +696,21 @@ class FanRoots:
     # ------
     def timing_fct(self, N=100):
         """
-        Call self.fct #N times, recording/returning the average time per call.
+        Measure the average wall-clock time of one fct() call.
 
-        If this is small compared to the cost of computing kappa, then certain
-        step taking methods (e.g., flopper) are more attractive. If this is
-        large, then other methods (e.g., bigstepper) are better.
+        Calls fct N times and returns the mean. Useful for choosing between
+        step-taking methods (FlopStep favoured when fct is cheap; JumpStep
+        when kappa is the bottleneck).
+
+        Parameters
+        ----------
+        N : int, optional
+            Number of calls to average over. Defaults to 100.
+
+        Returns
+        -------
+        mean_time : float
+            Mean time per call in seconds.
         """
         fct_calls = self.num_fct_calls
         tic = time.time()
@@ -597,11 +723,21 @@ class FanRoots:
 
     def timing_jac(self, N=100):
         """
-        Call self.jac N times, recording/returning the average time per call.
+        Measure the average wall-clock time of one jac() call.
 
-        If this is small compared to the cost of computing kappa, then certain
-        step taking methods (e.g., flopper) are more attractive. If this is
-        large, then other methods (e.g., bigstepper) are better.
+        Calls jac N times and returns the mean. Useful for choosing between
+        step-taking methods (FlopStep favoured when jac is cheap; JumpStep
+        when kappa is the bottleneck).
+
+        Parameters
+        ----------
+        N : int, optional
+            Number of calls to average over. Defaults to 100.
+
+        Returns
+        -------
+        mean_time : float
+            Mean time per call in seconds.
         """
         jac_calls = self._num_jac_calls
         tic = time.time()
@@ -615,11 +751,27 @@ class FanRoots:
     # core methods
     # ============
     def kappa_nz(self):
+        """
+        Return cached indices of non-zero elements of kappa.
+
+        Returns
+        -------
+        indices : tuple of ndarray
+            Output of np.nonzero(self.kappa).
+        """
         if self._kappa_nz is None:
             self._kappa_nz = np.nonzero(self.kappa)
         return self._kappa_nz
 
     def kappa_vals(self):
+        """
+        Return cached values of non-zero elements of kappa.
+
+        Returns
+        -------
+        vals : ndarray
+            Kappa values at the non-zero indices.
+        """
         if self._kappa_vals is None:
             self._kappa_vals = self.kappa[self.kappa_nz()]
 
@@ -627,8 +779,15 @@ class FanRoots:
 
     def x(self):
         """
-        Wrap up all parameters (heights and, optionally, other parameters) into
-        a long vector of shape (n,), where n = len(heights) + len(other).
+        Return all optimisation variables as a single vector.
+
+        Concatenates heights and other (if any). Shape is (N_vecs,) when
+        only_heights is True, or (N_vecs + N_other,) otherwise.
+
+        Returns
+        -------
+        x : ndarray of shape (n,)
+            The concatenated parameter vector.
         """
         if self.only_heights:
             return self.heights
@@ -637,9 +796,19 @@ class FanRoots:
 
     def fct(self, x=None, **kwargs):
         """
-        Evaluate the function at the current location.
+        Evaluate the residual function at the current (or given) location.
 
-        If a location is provided, evaluate the function there instead.
+        Caches the result when x is None and no extra kwargs are passed.
+
+        Parameters
+        ----------
+        x : ndarray of shape (n,), optional
+            If given, evaluate at x instead of self.x(). Defaults to None.
+
+        Returns
+        -------
+        F : ndarray of shape (m,)
+            The residual vector F(x).
         """
         tic = time.time()
         
@@ -668,7 +837,20 @@ class FanRoots:
 
     def jac(self, x=None, **kwargs):
         """
-        Evaluate the Jacobian at the current location
+        Evaluate the Jacobian at the current (or given) location.
+
+        Caches the result when x is None and no extra kwargs are passed.
+
+        Parameters
+        ----------
+        x : ndarray of shape (n,), optional
+            If given, evaluate at x instead of self.x(). Defaults to None.
+
+        Returns
+        -------
+        J : ndarray of shape (m, n) or tuple of ndarray
+            The Jacobian matrix, or a tuple of Jacobians when
+            only_heights is False.
         """
         tic = time.time()
         
@@ -697,8 +879,23 @@ class FanRoots:
 
     def res_norm(self, x=None, use_actual_kappa=False):
         """
-        For checking convergence, we monitor the sum of squared residuals.
-        For root finding, the residual is just the function itself.
+        Compute the squared L2 residual norm sum(F.real**2 + F.imag**2).
+
+        This is the quantity minimised internally; convergence is declared
+        when res_norm() < tolerance**2.
+
+        Parameters
+        ----------
+        x : ndarray of shape (n,), optional
+            Evaluate at x instead of self.x(). Defaults to None.
+        use_actual_kappa : bool, optional
+            If True, recompute the triangulation and kappa at x before
+            evaluating. Defaults to False.
+
+        Returns
+        -------
+        norm : float
+            Squared residual norm.
         """
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always", RuntimeWarning)
@@ -752,15 +949,14 @@ class FanRoots:
 
     def grad(self):
         """
-        Compute the gradient of the objective (sum of squared residuals).
+        Compute the gradient of the least-squares objective with respect to the parameters.
 
-        TBH, here, one assumes you use *half* the sum of squared residuals.
-        This is just a scaling that gets absorbed into the learning rate...
+        Uses the identity grad_i S = sum_j F_j dF_j/dx_i = J^T F.
 
-        This is easy:
-            grad_i = d_i 0.5 * \\sum_j F_j(x)^2.
-                   = \\sum_j F(x)_j (d_i F(x)_j)
-                   = jac.T @ F(x)
+        Returns
+        -------
+        g : ndarray of shape (n,)
+            Gradient of S = 0.5 * ||F||^2 with respect to x.
         """
         if self._grad is None:
             F = self.fct()
@@ -788,9 +984,20 @@ class FanRoots:
     # =====
     def step(self, num=1):
         """
-        User request step(s).
-        
-        Basically just a wrapper of _step that enables cleaner plotting.
+        Perform num optimisation steps.
+
+        Wrapper around _step that refreshes Plotly figures if plotting is
+        enabled. Pass num=float('inf') to run until convergence.
+
+        Parameters
+        ----------
+        num : int or float, optional
+            Number of steps to take. Defaults to 1.
+
+        Returns
+        -------
+        status : dict
+            Status dict from get_status().
         """
         # update the plots
         if self.plotting:
@@ -1052,14 +1259,27 @@ class FanRoots:
 
     def optimize(self):
         """
-        Take steps until completed (res_norm<tolerance or failed)
+        Run the optimiser to completion.
+
+        Equivalent to step(num=float('inf')).
+
+        Returns
+        -------
+        status : dict
+            Final status dict from get_status().
         """
         return self.step(num=float('inf'))
 
     def compute_next_step(self):
         """
-        Compute the next step and, optionally, optimize the size
-        (assumed scaled by alpha \\in (0,1])
+        Compute the next proposed step, including step-size optimisation.
+
+        Returns the step vector (proposal * momentum * lr * alpha).
+
+        Returns
+        -------
+        step : ndarray of shape (n,)
+            The proposed step to be applied to x.
         """
         naive_step  = self.step_proposal(self)
         scaled_step = self.momentum * self.learning_rate * naive_step
@@ -1069,6 +1289,7 @@ class FanRoots:
         return self.proposed_step
 
     def update_step_taking_method(self):
+        """Select the active step-taking method from the schedule."""
         for i, (criteria, method) in enumerate(self.step_taking_schedule):
             if criteria(self):
                 self.step_taking_method = method
@@ -1122,6 +1343,7 @@ class FanRoots:
             self._add_traces()
 
     def _add_traces(self, num=None):
+        """Add empty Plotly traces to the diagnostic figure."""
         # add traces (empty initially)
         self.fig_lines = []
 
@@ -1222,6 +1444,36 @@ class FanRoots:
     # ----
     def swarm(self, N, scale, max_N_misses=100, plotting=None,
               seed=None, verbosity=0):
+        """
+        Create N perturbed copies of this optimiser as a BatchOptimizer.
+
+        Each copy has heights perturbed by Gaussian noise of std scale.
+        Perturbed heights that do not yield a fine triangulation are discarded
+        and resampled until N valid copies are collected.
+
+        Parameters
+        ----------
+        N : int
+            Number of swarmlings to create.
+        scale : float
+            Standard deviation of the Gaussian height perturbation.
+        max_N_misses : int, optional
+            Maximum resampling attempts before raising an exception.
+            Defaults to 100.
+        plotting : bool, optional
+            Enable plotting in the returned BatchOptimizer. Defaults to
+            self.plotting.
+        seed : int, optional
+            Random seed for reproducibility. Defaults to None (uses
+            current timestamp).
+        verbosity : int, optional
+            Verbosity level for the swarm. Defaults to 0.
+
+        Returns
+        -------
+        batch : BatchOptimizer
+            A BatchOptimizer containing the N perturbed optimiser copies.
+        """
         if seed is None:
             seed = int(datetime.now().timestamp())
         rng = np.random.default_rng(seed=seed)
@@ -1282,10 +1534,28 @@ class FanRoots:
         return _swarm
 
 class BatchOptimizer():
+    """
+    Wrap a list of FanRoots instances and run them all in one call.
+
+    BatchOptimizer runs a collection of optimisers either serially or in
+    parallel via joblib. It is returned by FanRoots.swarm() but can also be
+    constructed directly.
+
+    Parameters
+    ----------
+    optimizers : list of FanRoots
+        The optimiser instances to run.
+    plotting : bool, optional
+        Enable a shared Plotly figure. Defaults to False.
+    verbosity : int, optional
+        Verbosity level passed to each optimiser. Defaults to 0.
+    """
+
     def __init__(self,
         optimizers,
         plotting = False,
         verbosity = 0,):
+        """Initialise BatchOptimizer."""
 
         self.batch     = optimizers
         self.plotting  = plotting
@@ -1315,6 +1585,19 @@ class BatchOptimizer():
                 optimizer._add_traces(num=i)
 
     def __getitem__(self, index):
+        """
+        Return the optimiser(s) at the given index.
+
+        Parameters
+        ----------
+        index : int or slice
+            Index or slice to select from the internal batch list.
+
+        Returns
+        -------
+        result : FanRoots or list of FanRoots
+            The selected optimiser instance or a list of instances.
+        """
         if isinstance(index, int):
             return self.batch[index]
         elif isinstance(index, slice):
@@ -1323,12 +1606,50 @@ class BatchOptimizer():
              raise TypeError("Invalid index")
 
     def get_status(self):
+        """
+        Return the status dict for every optimiser.
+
+        Returns
+        -------
+        statuses : list of dict
+            One status dict per optimiser (see FanRoots.get_status).
+        """
         return [optimizer.get_status() for optimizer in self.batch]
 
     def optimize(self, serial=False, backend='loky'):
+        """
+        Run all optimisers to completion.
+
+        Equivalent to calling step(num=float('inf')). Delegates directly to
+        step() with the same serial and backend arguments.
+
+        Parameters
+        ----------
+        serial : bool, optional
+            Run optimisers sequentially instead of in parallel. Defaults to False.
+        backend : str, optional
+            joblib parallel backend to use (e.g. 'loky', 'threading'). Defaults to 'loky'.
+        """
         self.step(num=float('inf'), serial=serial, backend=backend)
 
     def step(self, num=1, serial=False, backend='loky'):
+        """
+        Take num steps with every optimiser.
+
+        Runs all optimisers for num steps, dispatching them in parallel by
+        default (via joblib) or serially when serial=True. Pass
+        num=float('inf') to run each optimiser to completion.
+
+        Parameters
+        ----------
+        num : int or float, optional
+            Number of steps to take. Use float('inf') to run to completion.
+            Defaults to 1.
+        serial : bool, optional
+            Run optimisers sequentially instead of in parallel. Defaults to False.
+        backend : str, optional
+            joblib parallel backend to use (e.g. 'loky', 'threading'). Defaults to 'loky'.
+        """
         outputs = []
 
         # force serial mode if there is a single optimizer
