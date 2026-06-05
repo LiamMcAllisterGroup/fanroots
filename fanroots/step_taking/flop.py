@@ -110,12 +110,8 @@ class FlopStep:
             Ancillary data with keys num_flips (int) and step_scaling (float).
         """
         # current, target heights
-        if False:
-            h_curr   = optimizer.vc.jorp(optimizer.kahler)
-            h_target = optimizer.vc.jorp(optimizer.kahler + step)
-        else:
-            h_curr   = optimizer.heights
-            h_target = optimizer.heights + step
+        h_curr   = optimizer.heights
+        h_target = optimizer.heights + step
 
         # check triangulation
         if self.check_triang:

@@ -34,9 +34,7 @@ plotly_symbols = SymbolValidator.values
 plotly_symbols = [i for i in plotly_symbols if isinstance(i,int) and i<100]
 
 # warnings/logs/debugging
-start_time = datetime.now().strftime('%Y%m%d_%H%M%S')
-import os, sys, traceback
-from pathlib import Path
+import sys, traceback
 import warnings
 warnings.filterwarnings(
     "ignore",
@@ -676,9 +674,8 @@ class FanRoots:
             Condition number of the Jacobian.
         """
         if self._condition_number is None:
-            # WILL NEVER OCCUR. WE NOW COMPUTE CONDITION NUMBERS IN THE STEP
-            # ROUTINE SO AS TO BETTER CAPTURE THE ACTUAL MATRIX IN STEP
-            # COMPUTATIONS
+            # computed lazily on first request and cached; reset by
+            # clear_local_cache()
             J = self.jac()
             if len(J)==2:
                 # above is equivalent to checking if self.only_heights=False
@@ -1178,20 +1175,20 @@ class FanRoots:
                 self.history_proposal.append(step)
                 self.history_successful_step.append(success)
             
-            if self.history_level >= 2:
-                # also record the triangulation, intersection numbers, and
-                # anciliary data
-                self.history_triang.append(triang)
-                self.history_kappa.append(kappa)
-                self.history_anc.append(anc)
-
             # update
             self.last_step_success = success
             self.heights = h
             self.other   = other
             self.set_triang(triang)
-            self.set_kappa(getattr(triang, 'kappa', None))
+            self.set_kappa(getattr(triang, '_fanroots_kappa', None))
             self.anc     = anc
+
+            if self.history_level >= 2:
+                # also record the triangulation, intersection numbers, and
+                # anciliary data
+                self.history_triang.append(triang)
+                self.history_kappa.append(self.kappa)
+                self.history_anc.append(anc)
             if paranoid:
                 assert triang.is_fine()
                 dists = triang.secondary_cone_hyperplanes(via_circuits=True)@h
@@ -1238,7 +1235,7 @@ class FanRoots:
                         self.finished = True
                         self.success  = True
                     elif not self.last_step_success:
-                        self.finished_reason = "last step failed"
+                        self.finished_reason = "stalled: step below min_step_size"
                         self.finished = True
                         self.success  = False
 
@@ -1308,7 +1305,17 @@ class FanRoots:
         if self.fig is None:
             self._create_figures()
 
-        display(self.fig['fig'])
+        # display is the IPython/Jupyter builtin; the plot is a plotly
+        # FigureWidget that only renders inline in a notebook. warn rather
+        # than crash the optimize loop if we are not in such an environment
+        try:
+            from IPython.display import display
+            display(self.fig['fig'])
+        except ImportError:
+            warnings.warn(
+                "plotting=True needs a Jupyter/IPython environment to show "
+                "the figure; continuing without display"
+            )
         self.fig['displayed'] = True
 
     def _create_figures(self, add_traces=True):
@@ -1669,26 +1676,14 @@ class BatchOptimizer():
             if self.plotting:
                 raise ValueError("Plotting is not supported in parallel mode.")
 
-            HEARTBEAT_DIR = Path("/tmp/worker_heartbeats")
-            HEARTBEAT_DIR.mkdir(exist_ok=True)
-
+            # workers report success/exception via joblib's return tuples below;
+            # if OOM-killed workers (which return nothing) become a problem, a
+            # per-task heartbeat file written here and checked after Parallel()
+            # would let us pinpoint which task died
             def run_and_capture(i):
                 opt = self.batch[i]
-
-                # write a dummy file, delete it at the end
-                hb_file = HEARTBEAT_DIR / f"task_{i}_{start_time}.txt"
-
-                with open(hb_file, "w") as f:
-                    f.write("START\n")
-                    f.write(f"{time.time()}\n")
-                    f.flush()
-
                 try:
                     state = opt._step(num=num, return_full_state=True)
-                    with open(hb_file, "a") as f:
-                        f.write(f"{time.time()}\n")
-                        f.write("END")
-                        f.flush()
                     return (i, state, None)
                 except Exception as e:
                     # get extra details for the exception
@@ -1705,10 +1700,6 @@ class BatchOptimizer():
                     e.exc_type_name = exc_type.__name__
                     e.exc_value = exc_value
 
-                    with open(hb_file, "a") as f:
-                        f.write(f"{time.time()}\n")
-                        f.write("EXCEPTION")
-                        f.flush()
                     return (i, None, e)
 
             results = joblib.Parallel(
@@ -1717,21 +1708,6 @@ class BatchOptimizer():
                 joblib.delayed(run_and_capture)(i)
                 for i, opt in enumerate(self.batch)
             )
-
-            # paranoid completion checking
-            # ----------------------------
-            # every file ended
-            for i in range(len(self.batch)):
-                hb_file = HEARTBEAT_DIR / f"task_{i}_{start_time}.txt"
-
-                # ensure the file has an end line
-                with open(hb_file, "r") as f:
-                    ended = False
-                    for line in f:
-                        ended = (line == "END") or (line == "EXCEPTION")
-
-                # delete the file
-                os.remove(hb_file)
 
             # ensure we have the expected number of outputs
             assert len(results) == len(self.batch)

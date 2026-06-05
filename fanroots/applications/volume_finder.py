@@ -177,25 +177,16 @@ class VolumeFinder(FanRoots):
                                              as_np_array=True)
             return 0.5 * (kappa@t)@t
 
-        # potentially extrapolate kappa beyond the KC...
-        if False:
-            tau_curr = 0.5*np.einsum(
-                'ijk,j,k', 
-                self.kappa, t, t,
-                optimize=True) # this is unrelated to the optimizer...
-        elif False:
-            tau_curr = 0.5 * (self.kappa@t)@t
-        else:
-            # do things in an explicitly-sparse manner...
-            # much faster, if we already have kappa_nz and kappa_vals
-            i,j,k = self.kappa_nz()
-            vals = self.kappa_vals()
-
-            prod = vals * t[j] * t[k]
-
-            tau_curr = np.zeros_like(t)
-            np.add.at(tau_curr, i, prod)
-            tau_curr *= 0.5
+        # evaluate with the current chamber's cached kappa (self.kappa); if h is
+        # outside this chamber's Kahler cone, this is a deliberate smooth
+        # extrapolation of the chamber's volume polynomial (the exact /
+        # new-chamber case is the branch above). the 0.5 * kappa_{ijk} t_j t_k
+        # contraction is done sparsely -- fastest by far at the high h11 (>~90)
+        # targeted here, where kappa is ~0.1-0.4% dense (see benchmarks/);
+        # bincount beats add.at
+        i, j, k = self.kappa_nz()
+        vals = self.kappa_vals()
+        tau_curr = 0.5 * np.bincount(i, weights=vals * t[j] * t[k], minlength=len(t))
 
         return tau_curr
 

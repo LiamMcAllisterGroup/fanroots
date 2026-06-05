@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fanroots"
-version = "0.0.2"
+version = "0.1.0"
 description = "Root-finding and optimization on polyhedral fans"
 authors = [{ name = "Nate MacFadden" }]
 readme = "README.md"
@@ -31,5 +31,5 @@ test = ["pytest"]
 [project.urls]
 Repository = "https://github.com/LiamMcAllisterGroup/fanroots"
 
-[tool.setuptools]
-packages = ["fanroots", "fanroots.step_proposal", "fanroots.step_size", "fanroots.step_taking", "fanroots.demo"]
+[tool.setuptools.packages.find]
+include = ["fanroots*"]

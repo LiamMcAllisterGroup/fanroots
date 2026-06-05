@@ -18,35 +18,14 @@
 #
 # -----------------------------------------------------------------------------
 # Description: Propose an optimization step h->h+step in a fan using the
-#              Levenberg–Marquardt algorithm (LMA).
+#              Levenberg-Marquardt algorithm (LMA).
 # -----------------------------------------------------------------------------
 
 import numpy as np
 import scipy as sp
 
-import warnings
 
-def lma_idk(F, J, lmbda, scaled):
-    """
-    Compute Levenberg-Marquardt step using augmented least squares.
-    """
-    m, n = J.shape
-
-    if scaled == False:
-        D_sqrt = np.sqrt(lmbda) * np.eye(n)
-    else:
-        # assumes D is diagonal or symmetric positive-definite
-        raise NotImplementedError()
-        D_sqrt = np.sqrt(lmbda) * sp.sqrtm(D)
-
-    A = np.vstack([J, D_sqrt])
-    b = -np.concatenate([F, np.zeros(n)])
-
-    # Solve the least squares problem ||A s - b||^2
-    step, *_ = np.linalg.lstsq(A, b, rcond=None)
-    return step
-
-def lma(F, J, JTF, lmbda, scaled):
+def lma(F, J, lmbda, scaled):
     """
     Solve F = 0 using the Levenberg-Marquardt algorithm (LMA).
 
@@ -88,8 +67,6 @@ def lma(F, J, JTF, lmbda, scaled):
         The value of the function at the current location.
     J : ndarray of shape (m, n)
         The value of the Jacobian at the current location.
-    JTF : ndarray of shape (n,)
-        The product J.T @ F.
     lmbda : float
         The damping factor/Marquardt parameter.
     scaled : bool
@@ -169,7 +146,7 @@ def propose_lma(optimizer, lmbda=None, scaled=False,
     """
     # Dynamic-lambda LMA (default mode). Marquardt's update rule:
     # divide lmbda by nu after a successful step, multiply by nu after a
-    # rejected step. Skip the very first call — no previous step to react to.
+    # rejected step. Skip the very first call -- no previous step to react to.
     if lmbda is None:
         if not hasattr(optimizer, 'lmbda'):
             optimizer.lmbda = lmbda_init
@@ -205,6 +182,6 @@ def propose_lma(optimizer, lmbda=None, scaled=False,
         J_h = np.hstack([J_h, J_other])
 
     # compute the step
-    step = lma(F_h, J_h, optimizer.grad(), lmbda=lmbda, scaled=scaled)
+    step = lma(F_h, J_h, lmbda=lmbda, scaled=scaled)
 
     return step

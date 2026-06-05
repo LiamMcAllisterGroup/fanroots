@@ -20,6 +20,11 @@
 # Description: Apply ternary search to optimize step sizes
 # -----------------------------------------------------------------------------
 
+import math
+import sys
+import warnings
+
+
 def ternary_raw(f, left, right, absolute_precision):
     """
     Find the minimum of a unimodal function on [left, right] by ternary search.
@@ -83,7 +88,6 @@ def ternary(optimizer, step, absolute_precision=1e-1):
         Scale factor in [0, 1] that approximately minimises
         r(x + alpha*step) along the given step direction.
     """
-    import sys, math, warnings
     expected_depth = math.log(1 / absolute_precision) / math.log(1.5)
     if expected_depth > sys.getrecursionlimit() - 50:
         warnings.warn(
