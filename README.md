@@ -24,11 +24,11 @@ For functions depending on the intersection numbers, performance is further boos
 
 ## Installation
 
+fanroots builds on [CYTools](https://github.com/LiamMcAllisterGroup/cytools): its `cytools.vector_config` module supplies the `VectorConfiguration`/`Fan` types fanroots operates on (these wrap `regfans`' flip/flop routines, adding toric capabilities). Install CYTools first; it is conda-based and pulls in dependencies that aren't pip-installable on their own (pplpy, normaliz, python-flint, regfans). Then, in that same environment:
+
 ```
 pip install -e .
 ```
-
-Requires [CYTools](https://github.com/LiamMcAllisterGroup/cytools), whose `cytools.vector_config` module supplies the `VectorConfiguration`/`Fan` types fanroots operates on. These wrap `regfans`' flip/flop routines, adding toric capabilities.
 
 ## Usage
 
@@ -53,7 +53,7 @@ Key arguments (see `help(FanRoots)` for the full list):
 
 | Argument | Options | Description |
 |---|---|---|
-| `step_proposal` | `"newton"`, `"gauss_newton"`, `"grad"`, `"lma"` | Step direction method |
+| `step_proposal` | `"newton"`, `"gauss_newton"`, `"grad"`, `"lma"` | Step direction method (`"newton"` aliases `"gauss_newton"` here) |
 | `step_size_optimizer` | `"shrink"`, `"bls"`, `"ternary"`, `"naive"` | Step size tuning |
 | `step_taking_method` | `"jump"`, `"flop"` | How to move through the fan; overridden by `step_taking_schedule` for mixed strategies |
 | `learning_rate` | float | Scales the proposed step before size optimization |
