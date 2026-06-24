@@ -1,7 +1,5 @@
 # fanroots
-*Original author: [Nate MacFadden](https://github.com/natemacfadden), Liam McAllister Group, Cornell*
-
-*Contributors: -*
+*[Nate MacFadden](https://github.com/natemacfadden), Liam McAllister Group, Cornell*
 
 Root-finding and optimization for vector-valued functions defined piecewise over the secondary fan of a point or vector configuration. Designed for Kähler moduli stabilization (KMS) in string compactifications, where it delivers **order-of-magnitude speedups** over prior methods (i.e., those in [arXiv:2406.13751](https://arxiv.org/abs/2406.13751)).
 
@@ -62,3 +60,21 @@ Key arguments (see `help(FanRoots)` for the full list):
 | `verbosity` | int | Controls diagnostic output |
 
 See the `VolumeFinder` class in `fanroots/applications/volume_finder.py` for a complete example finding Kähler parameters that realize prescribed divisor volumes.
+
+## Organization
+
+```
+fanroots/
+├── fanroots/
+│   ├── fanroots.py        # the FanRoots optimizer class
+│   ├── step_proposal/     # step directions: newton, gauss_newton, gradient_descent, lma
+│   ├── step_size/         # step-size tuning: shrink, backtracking_line_search, ternary, naive
+│   ├── step_taking/       # moving through the fan: jump (recompute) vs flop (walk via flips)
+│   └── applications/      # volume_finder.py: Kahler parameters for target divisor volumes
+├── benchmarks/            # speedup vs the prior method (data.py, prior_method.py, bench_*.py)
+├── tests/
+│   └── test_volume_finder.py
+├── environment.yml
+├── pyproject.toml
+└── LICENSE
+```
