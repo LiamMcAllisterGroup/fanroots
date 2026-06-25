@@ -33,7 +33,7 @@ def ternary_raw(f, left, right, absolute_precision):
 
     Adjusted to minimize f, not maximize.
 
-    Assumes f is unimodular in interval [left, right].
+    Assumes f is unimodal in interval [left, right].
     """
     if abs(right - left) < absolute_precision:
         return (left + right) / 2

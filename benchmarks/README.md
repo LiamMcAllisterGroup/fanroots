@@ -41,7 +41,7 @@ FanRoots is timed over `--trials` runs (plus one warmup); the prior method is ru
 python benchmarks/bench_div_vols.py [--trials N]
 ```
 
-At the targeted h11 (90+) the intersection-number tensor is only ~0.1-0.4 % dense, so the sparse kernels win by ~10x over dense matmul and ~100x over einsum, and `np.bincount` edges out `np.add.at`. That is why `div_vols` uses the sparse `bincount` form (no density-adaptive branch -- small-h11, where dense would win, is out of scope).
+At the targeted h11 (90+) the intersection-number tensor is only ~0.1-0.4 % dense, so the sparse kernels win by ~10x over dense matmul and ~100x over einsum, and `np.bincount` and `np.add.at` are on par. `div_vols` uses the sparse `bincount` form (no density-adaptive branch -- small-h11, where dense would win, is out of scope).
 
 ## Data and reproducibility
 

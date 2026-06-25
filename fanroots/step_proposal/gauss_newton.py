@@ -18,7 +18,7 @@
 #
 # -----------------------------------------------------------------------------
 # Description: Propose an optimization step h->h+step in a fan using the
-#              Gauss-Newton algorithm (LMA).
+#              Gauss-Newton algorithm.
 # -----------------------------------------------------------------------------
 
 import numpy as np

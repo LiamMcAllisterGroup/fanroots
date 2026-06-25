@@ -18,7 +18,7 @@
 #
 # -----------------------------------------------------------------------------
 # Description: Attempt an optimization step t->t+step in a fan, for which the
-#              objective function depends on the interesection numbers, kappa.
+#              objective function depends on the intersection numbers, kappa.
 #
 #              Update the objective function/kappa by flopping.
 # -----------------------------------------------------------------------------

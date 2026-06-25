@@ -14,7 +14,7 @@ The major complication in practice is the moderate-to-high dimension $\mathbb{R}
 **fanroots** solves this by moving through the fan adaptively:
 
 - **Large steps** (`JumpStep`): jump directly to target heights, recomputing the triangulation from scratch. Effective when the function varies slowly chamber-by-chamber, as is typical for finding locations in Kähler moduli space where the divisors take certain volumes.
-- **Small steps** (`FlopStep`): walk along the step direction via CYTools' `flip_linear` -- a wrapper of `regfans`' flip routines that additionally tracks intersection numbers -- flipping through chamber walls one at a time. Efficient for fine-grained convergence once near a solution.
+- **Small steps** (`FlopStep`): walk along the step direction via CYTools' `flop_linear` -- a wrapper of `regfans`' flip routines that additionally tracks intersection numbers -- flipping through chamber walls one at a time. Efficient for fine-grained convergence once near a solution.
 
 A schedule can mix both strategies dynamically based on step size. Step proposals include Newton's method, Gauss-Newton, gradient descent, and Levenberg-Marquardt. Step sizes are tuned via backtracking line search, ternary search, or 'shrinking'.
 

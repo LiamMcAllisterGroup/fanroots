@@ -8,7 +8,7 @@ compares dense and sparse variants on the real benchmark geometries (h11 =
 
 At these h11 the intersection-number tensor is only ~0.1-0.4% dense, so the
 sparse kernels beat dense matmul by ~10x and dense einsum by ~100x, and
-``np.bincount`` edges out ``np.add.at`` -- which is why ``div_vols`` uses the
+``np.bincount`` and ``np.add.at`` are on par -- ``div_vols`` uses the
 sparse bincount form.
 
 Usage:

@@ -242,12 +242,11 @@ class FanRoots:
                 learning_rate = 1e-1
 
         # this is ignored if step_taking_schedule is set...
-        if (step_taking_method == "flop") or (step_taking_method == "floper"):
+        if (step_taking_method == "flop") or (step_taking_method == "flopper"):
             step_taking_method = flop.FlopStep(max_num_flips=1)
         elif (step_taking_method=="jump") or (step_taking_method=="bigstepper"):
             step_taking_method = jump.JumpStep()
-        else:
-            step_taking_method = step_taking_method
+        # else: a step-taking object was passed in directly; use it as-is
 
         # step size optimizers
         if step_size_optimizer == "naive":
@@ -351,7 +350,7 @@ class FanRoots:
         # -----------
         if reckless_mode and (verbosity >= 0):
             print(
-                "By setting `reckless_mode=True`, you are explictly requesting"
+                "By setting `reckless_mode=True`, you are explicitly requesting"
             )
             print(
                 "that the optimizer does NOT halt upon undefined behavior"
@@ -456,7 +455,7 @@ class FanRoots:
         self.heading      = None # unit vector along the most recent step
         self.prev_heading = None # unit vector along previous step
         self.delta_heading= None # angle (radians) between prev heading and curr
-        self.anc          = None # misc anciliary data
+        self.anc          = None # misc ancillary data
         
         self.last_proposal_size = None
         self.last_step_size     = None
@@ -466,7 +465,6 @@ class FanRoots:
     def clear_history(self):
         self.history = []
         self.history_largeangle = []
-        self.history_conditionnum = []
         self.history_triang  = []
         self.history_kappa   = []
 
@@ -978,7 +976,7 @@ class FanRoots:
 
             if self.history_level >= 2:
                 # also record the triangulation, intersection numbers, and
-                # anciliary data
+                # ancillary data
                 self.history_triang.append(triang)
                 self.history_kappa.append(self.kappa)
                 self.history_anc.append(anc)

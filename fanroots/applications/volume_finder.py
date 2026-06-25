@@ -144,8 +144,6 @@ def flop_rule(opt):
         return True
     else:
         return False
-def always_true(opt):
-    return True
 
 # helper functions
 # ----------------
