@@ -12,5 +12,11 @@ dist/
 venv/
 .env
 
+# Test / coverage
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
 # Data files
 *.pkl
