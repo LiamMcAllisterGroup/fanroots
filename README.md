@@ -22,29 +22,35 @@ For functions depending on the intersection numbers, performance is further boos
 
 ## Installation
 
-fanroots builds on [CYTools](https://github.com/LiamMcAllisterGroup/cytools): its `cytools.vector_config` module supplies the `VectorConfiguration`/`Fan` types fanroots operates on (these wrap `regfans`' flip/flop routines, adding toric capabilities). Install CYTools first; it is conda-based and pulls in dependencies that aren't pip-installable on their own (pplpy, normaliz, python-flint, regfans). Then, in that same environment:
+fanroots builds on [CYTools](https://github.com/LiamMcAllisterGroup/cytools): its `cytools.vector_config` module supplies the `VectorConfiguration`/`Fan` types fanroots operates on (these wrap `regfans`' flip/flop routines, adding toric capabilities). CYTools is conda-based and pulls in dependencies that aren't pip-installable on their own (pplpy, normaliz, python-flint, regfans). The provided `environment.yml` creates a conda environment with that full stack (this is the same setup CI uses); then install fanroots into it with pip:
 
 ```
+conda env create -f environment.yml
+conda activate fanroots
 pip install -e .
 ```
 
 ## Usage
 
-This operates via an optimization class `FanRoots`:
+The primary interface is `FanRoots`, which root-finds a vector-valued function over the secondary fan. Its built-in application `VolumeFinder` solves the divisor-volume problem -- finding Kähler parameters whose divisor volumes match a target. This runs one of the benchmark geometries (see `benchmarks/`):
 
 ```python
-from fanroots import FanRoots
+import sys
+sys.path.insert(0, "benchmarks")
 
-optimizer = FanRoots(
-    vc=my_vector_configuration,
-    fct=fct,
-    jac=jac,
-    step_proposal="newton",       # "newton", "gauss_newton", "grad", "lma"
-    step_size_optimizer="shrink", # "shrink", "bls", "ternary", "naive"
-    step_taking_method="jump",    # "jump", "flop"
-    tolerance=1e-6,
-)
-optimizer.optimize()
+import numpy as np
+from cytools import Polytope
+from fanroots.applications.volume_finder import VolumeFinder
+from data import PROBLEMS
+
+# A real benchmark geometry with its target divisor volumes (see benchmarks/).
+prob = PROBLEMS[1]
+vc = Polytope(prob["points"]).vc(include_points_interior_to_facets=False)
+vc._gale_basis = np.asarray(prob["basis"])  # pin the basis (cytools' default is system-dependent)
+
+vf = VolumeFinder(target=np.asarray(prob["target"], dtype=float), vc=vc)
+vf.optimize()
+print(vf.finished_reason)  # -> "converged"
 ```
 
 Key arguments (see `help(FanRoots)` for the full list):
@@ -59,7 +65,7 @@ Key arguments (see `help(FanRoots)` for the full list):
 | `min_step_size` | float | Halt if step shrinks below this |
 | `verbosity` | int | Controls diagnostic output |
 
-See the `VolumeFinder` class in `fanroots/applications/volume_finder.py` for a complete example finding Kähler parameters that realize prescribed divisor volumes.
+See `fanroots/applications/volume_finder.py` for the `VolumeFinder` implementation, and as a template for defining your own `fct`/`jac`.
 
 ## Organization
 
