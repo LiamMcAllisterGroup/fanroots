@@ -22,7 +22,7 @@ For functions depending on the intersection numbers, performance is further boos
 
 ## Performance
 
-Finding KKLT points (see [arXiv:2406.13751](https://arxiv.org/pdf/2406.13751)), FanRoots is both faster and more robust than the prior method. Across geometries of optimization dimension ($h^{1,1}$) 56-150, it solves in well under 2 s while the prior method takes seconds to minutes -- a **~20-70x speedup that grows with dimension** -- and on some geometries the prior method fails to converge where FanRoots succeeds (ringed below). Times are means over repeated runs with BLAS threads pinned (the prior method's BLAS calls oversubscribe otherwise; see [`benchmarks/`](benchmarks/)).
+Finding KKLT points (see [arXiv:2406.13751](https://arxiv.org/pdf/2406.13751)), FanRoots is both faster and more robust than the prior method. Across geometries of optimization dimension ($h^{1,1}$) 56-150, it solves in well under 2 s while the prior method takes seconds to minutes -- a **~20-70x speedup that grows with dimension** -- and on some geometries the prior method fails to converge where FanRoots succeeds (ringed below). Times are means over repeated runs with BLAS threads pinned (the prior method's BLAS calls oversubscribe otherwise); error bars are +/-std but are smaller than the markers. See [`benchmarks/`](benchmarks/).
 
 ![VolumeFinder benchmarking vs the prior method, across optimization dimension](benchmarks/scaling.png)
 
