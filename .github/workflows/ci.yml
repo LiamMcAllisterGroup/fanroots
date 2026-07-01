@@ -37,3 +37,16 @@ jobs:
         run: pip install -e ".[test]"
       - name: Run tests
         run: pytest -vv tests
+
+  types:
+    name: mypy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # mypy ignores the (unstubbed) cytools stack, so it needs only numpy --
+      # no conda env required, keeping this check fast
+      - run: pip install mypy numpy
+      - run: mypy fanroots/

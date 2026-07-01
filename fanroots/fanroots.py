@@ -48,6 +48,10 @@ from fanroots.step_size import naive, backtracking_line_search, shrink, ternary
 from fanroots.step_taking import flop, jump
 from numpy.typing import ArrayLike
 from collections.abc import Callable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # for type checkers only; the cytools types are resolved at runtime
+    from cytools.vector_config import VectorConfiguration, Fan
 
 # misc helpers
 # ------------

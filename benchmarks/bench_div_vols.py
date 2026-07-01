@@ -29,7 +29,7 @@ from bench_volume_finder import reconstruct, environment
 
 def kappa_nonzeros(prob):
     """Return (kappa, (i, j, k), vals) for a geometry's Delaunay chamber."""
-    _, vc, _ = reconstruct(prob)
+    _, vc = reconstruct(prob)
     heights0 = np.asarray(vc.subdivide().heights(), dtype=float)
     kappa = np.asarray(vc.triangulate(heights=heights0).intersection_numbers(
         in_basis=True, pushed_down=True, as_np_array=True))

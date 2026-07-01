@@ -27,9 +27,19 @@ requires-python = ">=3.10"
 
 [project.optional-dependencies]
 test = ["pytest"]
+dev = ["mypy"]
 
 [project.urls]
 Repository = "https://github.com/LiamMcAllisterGroup/fanroots"
 
 [tool.setuptools.packages.find]
 include = ["fanroots*"]
+
+[tool.setuptools.package-data]
+fanroots = ["py.typed"]
+
+[tool.mypy]
+# cytools and its dependency stack ship no type stubs
+ignore_missing_imports = true
+# accept `param: T = None` signatures without an explicit Optional[...]
+implicit_optional = true
