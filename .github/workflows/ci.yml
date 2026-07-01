@@ -36,7 +36,7 @@ jobs:
       - name: Install fanroots
         run: pip install -e ".[test]"
       - name: Run tests
-        run: pytest -vv tests
+        run: pytest -vv --cov=fanroots --cov-report=term-missing tests
 
   types:
     name: mypy
