@@ -22,11 +22,11 @@ For functions depending on the intersection numbers, performance is further boos
 
 ## Performance
 
-Finding KKLT points (see [arXiv:2406.13751](https://arxiv.org/pdf/2406.13751)), FanRoots stays under ~1 s while the prior method climbs from tens of seconds into minutes as the dimension grows -- a 1-2 order-of-magnitude speedup that widens with `dim` ($h^{1,1}$ of the search geometry), reaching ~400x at dim 111 below.
+Finding KKLT points (see [arXiv:2406.13751](https://arxiv.org/pdf/2406.13751)), FanRoots is both faster and more robust than the prior method. Across geometries of optimization dimension ($h^{1,1}$) 56-150, it solves in well under 2 s while the prior method takes seconds to minutes -- a **~20-70x speedup that grows with dimension** -- and on some geometries the prior method fails to converge where FanRoots succeeds (ringed below). Times are means over repeated runs with BLAS threads pinned (the prior method's BLAS calls oversubscribe otherwise; see [`benchmarks/`](benchmarks/)).
 
-![Divisor-volume solve time vs dimension](benchmarks/scaling.png)
+![VolumeFinder benchmarking vs the prior method, across optimization dimension](benchmarks/scaling.png)
 
-Each marker is a single Calabi-Yau geometry with its own KKLT point; see [`benchmarks/`](benchmarks/) for the harness, data, and the fixed-geometry comparison.
+Each marker is a single Calabi-Yau geometry with its own KKLT point; see [`benchmarks/`](benchmarks/) for the harness, data, and full table.
 
 ## Installation
 

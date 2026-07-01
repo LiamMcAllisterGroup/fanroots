@@ -5,33 +5,42 @@ divisor-volume solver, on realistic targets ('starting guesses').
 
 ## What is measured
 
-For each of three Calabi-Yau geometries, both solvers are given the **same** target divisor volumes (points used in the construction of [dS vacua](https://arxiv.org/abs/2406.13751)) and must find Kahler parameters / heights realizing them. We report wall-clock time to convergence and the speedup.
+For each Calabi-Yau geometry in `data.py` (optimization dimension $h^{1,1}$ = 56 to 150), both solvers are given the **same** KKLT point to solve for -- target divisor volumes from [arXiv:2406.13751](https://arxiv.org/pdf/2406.13751) -- and must find Kahler parameters / heights realizing them. We report wall-clock time (mean +/- std over repeated runs) and the speedup.
 
-- **FanRoots** -- the `VolumeFinder` in this repo (`step_size_optimizer="shrink"`, otherwise default settings), started from the Delaunay triangulation.
-- **Prior method** -- `prior_method.divisor_to_curve_alt`, the solver used in [2406.13751](https://arxiv.org/abs/2406.13751). Its numerical logic is verbatim (5th-order perturbative Newton with a tight-tolerance `least_squares` linear solve, adaptive step control, and flop detection).
+- **FanRoots** -- the `VolumeFinder` in this repo (`step_size_optimizer="shrink"`, otherwise default: a jump+flop schedule), started from the Delaunay triangulation.
+- **Prior method** -- `prior_method.divisor_to_curve_alt`, the solver used in [arXiv:2406.13751](https://arxiv.org/pdf/2406.13751). Its numerical logic is verbatim (5th-order perturbative Newton with a tight-tolerance `least_squares` linear solve, adaptive step control, and flop detection).
 
-## Representative results
+**BLAS threads are pinned** -- the harness sets `OMP/OPENBLAS/MKL_NUM_THREADS` before importing numpy. The prior method is BLAS-bound, and left unset its nested numpy/scipy/cytools thread pools oversubscribe all cores, inflating its time ~8-24x and making it irreproducible. Pinning gives the baseline a fair, stable time.
 
-Measured on Linux x86_64, Python 3.12, 12 cores (numpy 2.4, scipy 1.17, cytools):
+## Results
 
-| geometry | h11 | FanRoots | prior method | speedup |
-|----------|-----|----------|--------------|---------|
-| poly1    | 93  | ~1.9 s   | ~140 s       | ~75x    |
-| poly2    | 93  | ~1.8 s   | ~190 s       | ~104x   |
-| poly0    | 150 | ~6.7 s   | ~3560 s (~59 min) | ~530x |
+![VolumeFinder benchmarking (KKLT points)](scaling.png)
 
-All runs converge to matched accuracy (max |volume - target| ~ 1e-6-1e-5). FanRoots times are medians over the timed runs; the prior-method time is a single run, sensitive to BLAS threading / machine load (its inner solve is `scipy.least_squares`). The advantage grows with h11 -- the prior method's per-iteration cost scales much worse -- so at the h11=90-150 regime of interest FanRoots is 2-3 orders of magnitude faster. At h11=150 the prior method is also memory-intensive (it can exhaust a ~16 GB machine); use `--fanroots-only` there if memory-constrained. Absolute times vary with hardware; reproduce locally with the command below.
+Measured on an Intel Core Ultra 7 270K (24 cores, BLAS threads=8), Python 3.14, numpy 2.4 / scipy 1.18 / cytools 1.4.11:
+
+| h11 | FanRoots (s) | prior (s) | speedup |
+|----:|:-------------|:----------|--------:|
+| 56  | 0.20 +/- 0.00 | 4.5 +/- 0.1   | 22x |
+| 70  | 0.27 +/- 0.00 | 10.8 +/- 0.0  | 39x |
+| 90  | 0.50 +/- 0.00 | 17.2 +/- 0.0  | 34x |
+| 93  | 0.57 +/- 0.00 | 21.9 +/- 0.0  | 39x |
+| 111 | 0.88 +/- 0.03 | 35.6 +/- 0.1  | 41x |
+| 150 | 1.57 +/- 0.03 | 105.4 +/- 0.1 | 67x |
+
+(Representative rows; the full 12-geometry sweep is in `data.py`.) FanRoots is **~20-70x faster, and the advantage grows with dimension** -- it scales gently (0.2 -> 1.6 s over $h^{1,1}$ 56 -> 150) while the prior method grows from seconds to ~2 minutes. On some geometries (e.g. $h^{1,1}=86$, ringed in the plot) the prior method **fails to converge** while FanRoots succeeds -- a robustness gap on top of the speed. All runs reach matched accuracy (max |volume - target| ~ 1e-6 - 1e-5). Times are means over repeated runs (FanRoots 5, prior 3); the error bars are +/- std but are **smaller than the plot markers** -- once BLAS threads are pinned the timings are reproducible to ~0.1-3%. At h11=150 the prior method is also memory-intensive (it can exhaust a ~16 GB machine); use `--fanroots-only` there if memory-constrained.
 
 ## Running
 
 ```bash
-python benchmarks/bench_volume_finder.py                 # all geometries
-python benchmarks/bench_volume_finder.py 1 2             # selected geometries
-python benchmarks/bench_volume_finder.py --fanroots-only # skip the slow baseline
-python benchmarks/bench_volume_finder.py --trials 5 --prior-max-seconds 3600
+python benchmarks/bench_volume_finder.py                     # all geometries
+python benchmarks/bench_volume_finder.py 56 150              # selected h11
+python benchmarks/bench_volume_finder.py --fanroots-only     # skip the slow baseline
+python benchmarks/bench_volume_finder.py --trials 5 --prior-trials 3
+python benchmarks/bench_volume_finder.py --plot              # also write scaling.png (needs matplotlib)
+python benchmarks/bench_volume_finder.py --replot            # regenerate scaling.png from saved results
 ```
 
-FanRoots is timed over `--trials` runs (plus one warmup); the prior method is run once per geometry (it is deterministic and 2-3 orders of magnitude slower, so error bars are moot). The prior method on the h11=150 geometry takes ~1 hour; use `--fanroots-only` for a quick check.
+FanRoots is timed over `--trials` runs (+1 warmup), the prior method over `--prior-trials`; results are saved to `scaling_results.json` (used by `--replot`). With BLAS threads pinned the prior method on the h11=150 geometry takes ~2 min (it was ~1 hour with threads oversubscribed); use `--fanroots-only` for a quick check.
 
 ## Kernel micro-benchmark
 
