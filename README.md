@@ -20,6 +20,14 @@ A schedule can mix both strategies dynamically based on step size. Step proposal
 
 For functions depending on the intersection numbers, performance is further boosted by a recently developed fast intersection number kernel in [CYTools](https://github.com/LiamMcAllisterGroup/cytools), since computation of the intersection numbers typically becomes the bottleneck for such cases.
 
+## Performance
+
+Finding KKLT points (see [arXiv:2406.13751](https://arxiv.org/pdf/2406.13751)), FanRoots stays under ~1 s while the prior method climbs from tens of seconds into minutes as the dimension grows -- a 1-2 order-of-magnitude speedup that widens with `dim` ($h^{1,1}$ of the search geometry), reaching ~400x at dim 111 below.
+
+![Divisor-volume solve time vs dimension](benchmarks/scaling.png)
+
+Each marker is a single Calabi-Yau geometry with its own KKLT point; see [`benchmarks/`](benchmarks/) for the harness, data, and the fixed-geometry comparison.
+
 ## Installation
 
 fanroots builds on [CYTools](https://github.com/LiamMcAllisterGroup/cytools): its `cytools.vector_config` module supplies the `VectorConfiguration`/`Fan` types fanroots operates on (these wrap `regfans`' flip/flop routines, adding toric capabilities). CYTools is conda-based and pulls in dependencies that aren't pip-installable on their own (pplpy, normaliz, python-flint, regfans). The provided `environment.yml` creates a conda environment with that full stack (this is the same setup CI uses); then install fanroots into it with pip:
