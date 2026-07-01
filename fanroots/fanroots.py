@@ -1244,8 +1244,9 @@ class FanRoots:
                 # try to make a new fine triangulation
                 swarmling.triang = swarmling.vc.subdivide(swarmling.heights)
                 assert swarmling.triang.is_fine()
-            except:
-                # failed... retry
+            except Exception:
+                # failed to build a fine triangulation... retry
+                # (Exception, not bare except, so KeyboardInterrupt/SystemExit propagate)
                 num_misses += 1
                 if num_misses > max_N_misses:
                     raise Exception(
