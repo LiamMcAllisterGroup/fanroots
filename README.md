@@ -84,3 +84,7 @@ fanroots/
 ├── pyproject.toml
 └── LICENSE
 ```
+
+## License
+
+[GPLv3](LICENSE). Copyright (c) 2026 Nate MacFadden.
