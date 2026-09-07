@@ -108,7 +108,9 @@ class FlopStep:
         if denom == 0:
             success   = False
             r         = 0
-            fail_mode = "hit wall of BG and projection led to non-fine triangulation"
+            # reached only when the step is exactly zero, i.e. the step-size
+            # optimizer found no scaling that lowered the residual
+            fail_mode = "step scaled to zero: no step size reduced the residual"
             anc = {
                 'num_flips': num_flips,
                 'step_scaling': r,
