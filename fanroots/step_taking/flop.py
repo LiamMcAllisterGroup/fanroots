@@ -97,6 +97,12 @@ class FlopStep:
         # read the data
         status, h_curr, triang, sc, num_flips = out
 
+        # flip_linear gives 1 on success, else an Exception naming the wall hit
+        walk_status = str(status) if isinstance(status, Exception) else None
+
+        # what the walk covered; min_step_size is compared against this
+        walk_dist = np.linalg.norm(h_curr - optimizer.heights)
+
         # check how far along the step we actually moved
         denom = np.dot(step,step)
         if denom == 0:
@@ -107,6 +113,8 @@ class FlopStep:
                 'num_flips': num_flips,
                 'step_scaling': r,
                 'failure_mode': fail_mode, # None indicates success
+                'walk_status': walk_status,
+                'step_norm': walk_dist,
                 }
 
             return success, h_curr, triang, anc
@@ -140,8 +148,7 @@ class FlopStep:
                     optimizer.finished = True
         else:
             # determine if the step was a success
-            if (np.linalg.norm(optimizer.heights-h_curr)
-                    < optimizer.min_step_size):
+            if walk_dist < optimizer.min_step_size:
                 success = False
             else:
                 success = True
@@ -158,6 +165,8 @@ class FlopStep:
             'num_flips': num_flips,
             'step_scaling': r,
             'failure_mode': fail_mode, # None indicates success
+            'walk_status': walk_status,
+            'step_norm': walk_dist,
             }
 
         return success, h_curr, triang, anc

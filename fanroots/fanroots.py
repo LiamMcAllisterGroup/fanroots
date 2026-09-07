@@ -1031,7 +1031,18 @@ class FanRoots:
                         self.finished = True
                         self.success  = True
                     elif not self.last_step_success:
-                        self.finished_reason = "stalled: step below min_step_size"
+                        # name the distance, not the floor: a walk truncated at
+                        # a wall shrinks geometrically, so lowering the floor
+                        # buys nothing
+                        anc   = self.anc or {}
+                        moved = anc.get('step_norm')
+                        wall  = anc.get('walk_status')
+                        reason = "stalled: last step moved "
+                        reason += ("?" if moved is None else f"{moved:.3g}")
+                        reason += f" < min_step_size={self.min_step_size:g}"
+                        if wall:
+                            reason += f" ({wall})"
+                        self.finished_reason = reason
                         self.finished = True
                         self.success  = False
 
