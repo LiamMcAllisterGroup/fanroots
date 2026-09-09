@@ -1016,7 +1016,7 @@ class FanRoots:
                     len(self.history_res_norm) >= self.growth_demand_timescale
                     and (
                         0.50 * self.history_res_norm[
-                            -self.growth_demand_timescale
+                            -int(self.growth_demand_timescale)
                         ] <= self.history_res_norm[-1]
                     )
                 ):
