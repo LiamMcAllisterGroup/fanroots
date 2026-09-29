@@ -69,39 +69,102 @@ class FlopStep:
             The triangulation at the new location. Kappa accessible
             via triang.kappa (precomputed by flop_linear hooks).
         anc : dict
-            Ancillary data.
+            Ancillary data: num_flips, step_scaling, failure_mode,
+            walk_status (the wall the walk stopped at, if any) and
+            step_norm (the distance walked).
     """
     def __init__(self, max_num_flips=1, check_triang=False):
         self.max_num_flips = max_num_flips
         self.check_triang = check_triang
 
+    @staticmethod
+    def _hyperplanes(triang):
+        """The secondary cone's hyperplanes, as flip_linear computes them,
+        cached on the triangulation (flip_linear recomputes them per call)."""
+        H = getattr(triang, '_fanroots_sc', None)
+        if H is None:
+            H = np.array(triang.secondary_cone_hyperplanes(via_circuits=True,
+                                                           verbosity=-1))
+            triang._fanroots_sc = H
+        return H
+
+    @staticmethod
+    def _kappa_hooks():
+        """
+        flip_linear hooks that carry the intersection numbers through the
+        walk: the start fan's are taken from its cache (computed only if it
+        has none) and each flip updates them incrementally. None if CYTools'
+        flop update is unavailable.
+        """
+        try:
+            from cytools.vector_config.fan import flop as kappa_flop
+        except ImportError:
+            return None
+
+        def hook_init(fan):
+            k = getattr(fan, '_fanroots_kappa', None)
+            if k is None:
+                k = fan._fanroots_kappa = fan.intersection_numbers(
+                    pushed_down=True, in_basis=True, as_np_array=True)
+            fan.kappa = k
+
+        def hook_flip(fanpre, fanpost, circ):
+            fanpost.kappa = kappa_flop(fanpre, fanpre.kappa, circ)
+
+        return hook_init, hook_flip
+
+    @staticmethod
+    def _walk(optimizer, triang, h_from, h_to, max_flips):
+        # fast path: most steps stay inside the current cone. This returns
+        # exactly what flip_linear returns in that case (status 1, h_to, the
+        # same fan, its hyperplanes, 0 flips), using flip_linear's own tests
+        # (h_from strictly inside, h_to inside with >= 0); anything else
+        # takes the full walk, which raises where flip_linear raises
+        H = FlopStep._hyperplanes(triang)
+        if np.all(H @ h_from > 0) and np.all(H @ h_to >= 0):
+            return 1, np.array(h_to), triang, H, 0
+        walk = dict(
+            h_target=h_to,
+            h_init=h_from,
+            stop_at_deletion=True,
+            max_N_flips=max_flips,
+            verbosity=optimizer.verbosity-1,
+            check_regularity=False,
+        )
+        if not getattr(optimizer, 'carry_kappa', False):
+            # the intersection numbers are not carried through the walk (see
+            # FanRoots.carry_kappa): walk without them
+            return triang.flip_linear(**walk)
+        hooks = FlopStep._kappa_hooks()
+        if hooks is None:
+            return triang.flop_linear(**walk)
+        hook_init, hook_flip = hooks
+        return triang.flip_linear(**walk, hook_init=hook_init,
+                                  hook_flip=hook_flip)
+
     def __call__(self, optimizer, step, project=False, tau=1e-4):
         # current, target heights
-        h_curr   = optimizer.heights
-        h_target = optimizer.heights + step
+        h_start  = optimizer.heights
 
         # check triangulation
         if self.check_triang:
-            assert optimizer.triang.secondary_cone().contains(h_curr)
+            assert optimizer.triang.secondary_cone().contains(h_start)
 
         # try to walk along the step
-        out = optimizer.triang.flop_linear(
-            h_target=h_target,
-            h_init=h_curr,
-            stop_at_deletion=True,
-            max_N_flips=self.max_num_flips,
-            verbosity=optimizer.verbosity-1,
-            check_regularity=False
-        )
-        
-        # read the data
-        status, h_curr, triang, sc, num_flips = out
+        h_target = h_start + step
+        status, h_curr, triang, sc, num_flips = self._walk(
+            optimizer, optimizer.triang, h_start, h_target, self.max_num_flips)
 
         # flip_linear gives 1 on success, else an Exception naming the wall hit
         walk_status = str(status) if isinstance(status, Exception) else None
 
         # what the walk covered; min_step_size is compared against this
-        walk_dist = np.linalg.norm(h_curr - optimizer.heights)
+        walk_dist = np.linalg.norm(h_curr - h_start)
+
+        extra = {
+            'walk_status': walk_status,
+            'step_norm': float(walk_dist),
+            }
 
         # check how far along the step we actually moved
         denom = np.dot(step,step)
@@ -115,13 +178,12 @@ class FlopStep:
                 'num_flips': num_flips,
                 'step_scaling': r,
                 'failure_mode': fail_mode, # None indicates success
-                'walk_status': walk_status,
-                'step_norm': walk_dist,
+                **extra,
                 }
 
             return success, h_curr, triang, anc
 
-        r = np.dot(h_curr-optimizer.heights,step)/denom
+        r = np.dot(h_curr-h_start,step)/denom
 
         # project the initial step if r != 1
         if project:
@@ -146,29 +208,19 @@ class FlopStep:
                 fail_mode = None
             else:
                 fail_mode = "hit wall of BG and projection led to non-fine triangulation"
-                if not optimizer.last_step_success:
-                    optimizer.finished = True
         else:
             # determine if the step was a success
-            if walk_dist < optimizer.min_step_size:
-                success = False
-            else:
-                success = True
+            success = bool(walk_dist >= optimizer.min_step_size)
 
-            # save success/fail info
-            if success:
-                fail_mode = None
-            else:
-                fail_mode = "step too small"
-                if not optimizer.last_step_success:
-                    optimizer.finished = True
+            # save success/fail info. FanRoots decides whether a failed step
+            # ends the solve (and records why), so nothing is halted here
+            fail_mode = None if success else "step too small"
 
         anc = {
             'num_flips': num_flips,
             'step_scaling': r,
             'failure_mode': fail_mode, # None indicates success
-            'walk_status': walk_status,
-            'step_norm': walk_dist,
+            **extra,
             }
 
         return success, h_curr, triang, anc

@@ -22,6 +22,7 @@ import copy
 import joblib
 import numpy as np
 from datetime import datetime
+from types import MappingProxyType
 import time
 
 # plotting
@@ -62,6 +63,13 @@ class ResNormError(Exception):
     """
     pass
 
+class KappaRecomputeWarning(UserWarning):
+    """
+    Intersection numbers were recomputed from scratch after a flop, although
+    the flop step can update them incrementally (``carry_kappa=True``).
+    """
+    pass
+
 def always_true(*args, **kwargs):
     return True
 
@@ -97,6 +105,9 @@ class FanRoots:
         step_taking_method   = "flop",
         step_taking_schedule = None,
         learning_rate: float = None,
+
+        # intersection numbers across flips (opt-in)
+        carry_kappa: bool = False,
 
         # momentum (semi-questionable)
         use_momentum:      bool = True,
@@ -207,6 +218,18 @@ class FanRoots:
         momentum_reward : float, optional
             Factor by which to increase momentum on good steps.
             Defaults to 1.5.
+        carry_kappa : bool, optional
+            If True, flop steps update the intersection numbers
+            incrementally through each flop (CYTools' flop hooks) and
+            ``kappa`` uses those values. If False, walks do no
+            intersection-number work, and ``kappa`` is computed from
+            scratch when first read in a new chamber (a
+            ``KappaRecomputeWarning`` says so once). The incremental and
+            recomputed values agree to ~1e-14, so the two settings can
+            follow slightly different trajectories through flops, and
+            sensitive solves can end at different points. True is faster
+            whenever the objective reads ``kappa`` and the solve flops.
+            Defaults to False.
         history_level : int, optional
             The level at which we record history. Higher means more
             recording. Defaults to 0.
@@ -295,6 +318,7 @@ class FanRoots:
         self.max_momentum  = max_momentum
         self.momentum_penalty = momentum_penalty
         self.momentum_reward = momentum_reward
+        self.carry_kappa = carry_kappa
 
         # different methods for taking steps have different performance
         if step_taking_schedule is None:
@@ -408,23 +432,59 @@ class FanRoots:
         else:
             self.triang = val
 
-    def set_kappa(self, val=None):
-        self._kappa_nz   = None
-        self._kappa_vals = None
+    @property
+    def kappa(self):
+        """
+        The current chamber's intersection numbers (in basis, pushed down).
 
-        if val is None:
-            # `triang.kappa` is an alias for `intersection_numbers` in cytools,
-            # so we can't reuse that name for our cached array. Use a private one.
-            if not hasattr(self.triang, '_fanroots_kappa'):
-                self.triang._fanroots_kappa = self.triang.intersection_numbers(
+        Computed on first use and cached on the triangulation, so objectives
+        that never read them (e.g. KMS) never pay for them. See carry_kappa
+        for how they are obtained after a flop.
+        """
+        if self._kappa is None:
+            tri = self.triang
+            if not hasattr(tri, '_fanroots_kappa'):
+                if self.num_flips and not self.carry_kappa:
+                    warnings.warn(
+                        "recomputing intersection numbers from scratch after "
+                        "a flop; pass carry_kappa=True to update them "
+                        "incrementally through flops instead (faster; may "
+                        "change trajectories at round-off relative to "
+                        "carry_kappa=False)",
+                        KappaRecomputeWarning, stacklevel=2)
+                # `triang.kappa` is an alias for `intersection_numbers` in
+                # cytools, so we can't reuse that name for our cached array
+                tri._fanroots_kappa = tri.intersection_numbers(
                     in_basis=True,
                     pushed_down=True,
                     as_np_array=True
                 )
-            self.kappa = self.triang._fanroots_kappa
+            self._kappa = tri._fanroots_kappa
+        return self._kappa
+
+    @kappa.setter
+    def kappa(self, val):
+        self._kappa = val
+
+    def set_kappa(self, val=None):
+        """
+        Point kappa at the current triangulation's intersection numbers (or at
+        ``val``, which is then cached on the triangulation). Nothing is
+        computed here; see ``kappa``.
+        """
+        old = self.__dict__.get('_kappa')
+        if val is None:
+            self._kappa = getattr(self.triang, '_fanroots_kappa', None)
         else:
-            self.kappa = val
+            self._kappa = val
             self.triang._fanroots_kappa = val
+
+        # the sparse view (kappa_nz/kappa_vals) is only stale if kappa changed;
+        # set_kappa runs after every step, mostly within one chamber
+        if (self._kappa is None or self._kappa is not old
+                or not hasattr(self, '_kappa_nz')):
+            self._kappa_nz   = None
+            self._kappa_vals = None
 
     def clear_local_cache(self,
         clear_momentum=False,
@@ -443,6 +503,9 @@ class FanRoots:
             self.finished_reason = "N/A"
             self.finished = False
             self.success  = None
+            # machine-readable companion to finished_reason; see _terminate
+            self.termination      = None
+            self.termination_info = {}
 
     def clear_diagnostics(self):
         self.num_steps      = 0
@@ -466,6 +529,14 @@ class FanRoots:
         self.last_step_size     = None
         self.step_overestimation= None
         self.last_step_success  = True
+
+        # the lowest residual seen, and where (not necessarily the final point)
+        self.best_res_norm = float('inf')
+        self.best_x        = None
+        self.best_step     = None
+
+        # distinct warnings already printed under reckless_mode
+        self._reckless_seen = set()
 
     def clear_history(self):
         self.history = []
@@ -521,6 +592,9 @@ class FanRoots:
         # tolerance/completion
         status['finished']  = self.finished
         status['finished_reason'] = self.finished_reason
+        status['termination'] = self.termination
+        status['termination_info'] = self.termination_info
+        status['best_res_norm'] = self.best_res_norm
         status['res_norm']  = self.res_norm()
         status['tol_sq (compare to res_norm)'] = self.tolerance
         status['learning_rate'] = self.learning_rate
@@ -545,6 +619,55 @@ class FanRoots:
         
         return status
     status = get_status
+
+    # termination
+    # -----------
+    #: Every way a solve can end. ``finished_reason`` is the human-readable
+    #: sentence; ``termination`` is one of these codes, and ``termination_info``
+    #: carries the numbers behind it.
+    TERMINATIONS = MappingProxyType({
+        "converged":           "residual below tolerance",
+        "stalled_at_wall":     "the walk kept stopping at a wall of the fan",
+        "stalled":             "the step shrank below min_step_size (no wall)",
+        "no_progress":         "residual did not halve within "
+                               "growth_demand_timescale steps",
+        "numerical_error":     "a RuntimeWarning/FloatingPointError in the "
+                               "objective",
+        "user_halt":           "user_halting_fct returned True",
+        "exception":           "an exception escaped a step (re-raised)",
+    })
+
+    def _terminate(self, code, reason, success, **info):
+        """
+        End the solve, recording why.
+
+        Sets ``finished``/``success``/``finished_reason``, plus
+        ``termination`` (a code from ``TERMINATIONS``) and
+        ``termination_info``, which always includes the residual trend so a
+        caller can tell "stopped while still descending" (the path was
+        blocked) from "stopped at a floor".
+        """
+        assert code in self.TERMINATIONS, code
+        hist = self.history_res_norm
+        k = min(10, len(hist))
+        trend = None
+        if k >= 2 and hist[-k] > 0:
+            trend = float(hist[-1] / hist[-k])
+        info.update(
+            res_norm_final=float(hist[-1]) if hist else None,
+            res_norm_best=float(self.best_res_norm),
+            best_step=self.best_step,
+            num_steps=self.num_steps,
+            # ratio of the residual now to k steps ago; <1 means the solve was
+            # still descending when it stopped
+            res_ratio_last_10=trend,
+            still_descending=bool(trend is not None and trend < 1 - 1e-3),
+        )
+        self.finished = True
+        self.success = success
+        self.finished_reason = reason
+        self.termination = code
+        self.termination_info = info
 
     # misc
     # ----
@@ -709,47 +832,70 @@ class FanRoots:
             # vvvv FUNCTION CALL vvvv
             # override with manually input location
             if use_actual_kappa:
-                # store the real values
+                # evaluate with x's own chamber: store the real state...
                 h     = self.heights
                 other = self.other
                 tri   = self.triang
-                kappa = self.kappa
+                kappa = self._kappa
 
-                # fake with new values
+                # ... move to x ...
                 self.heights = x[:self.num_vecs]
-                self.other   = x[self.num_vecs:]
+                self.other   = None if self.only_heights else x[self.num_vecs:]
                 self.set_triang()
                 self.set_kappa()
 
-            f = self.fct(x)
-            out = np.sum(np.square(f.real) + np.square(f.imag))
-
-            if use_actual_kappa:
-                # reset
-                self.heights = h
-                self.other   = other
-                self.triang  = tri
-                self.kappa   = kappa
+            try:
+                f = self.fct(x)
+                out = np.sum(np.square(f.real) + np.square(f.imag))
+            finally:
+                if use_actual_kappa:
+                    # ... and restore it, through the setters so the cached
+                    # sparse view of kappa is restored with it
+                    self.heights = h
+                    self.other   = other
+                    self.set_triang(tri)
+                    self.set_kappa(kappa)
             # ^^^^ FUNCTION CALL ^^^^
 
-            for warn in w:
-                if issubclass(warn.category, RuntimeWarning):
-                    # set flags indicating that we've halted and why
-                    self.finished_reason = "RuntimeWarning in res_norm"
-                    self.finished = True
-                    self.success  = False
-                    self.last_step_success = False
+        # handled after the capture, so warnings passed on are not captured again
+        for warn in w:
+            if not issubclass(warn.category, RuntimeWarning):
+                # only RuntimeWarnings are handled here; pass any other
+                # warning the objective raised on to the caller
+                warnings.warn_explicit(warn.message, warn.category,
+                                       warn.filename, warn.lineno,
+                                       source=warn.source)
+                continue
+            detail = f"{warn.category.__name__}: {warn.message}"
 
-                    # construct a specialized warning to raise
-                    msg =   "RuntimeWarning caught in res_norm!\n"
-                    msg += f"f.real: {f.real}\n"
-                    msg += f"f.imag: {f.imag}\n"
-                    msg += f"norm parts: {np.square(f.real), np.square(f.imag)}"
+            if self.reckless_mode:
+                # keep going, as requested; say so once per distinct
+                # warning rather than once per call
+                if detail not in self._reckless_seen:
+                    self._reckless_seen.add(detail)
+                    if self.verbosity >= 0:
+                        print(f"reckless_mode: ignoring {detail} "
+                              f"(from {warn.filename}:{warn.lineno})")
+                continue
 
-                    if self.reckless_mode:
-                        print(w)
-                    else:
-                        raise ResNormError(msg)
+            # halt, naming the warning
+            self.last_step_success = False
+            self._terminate(
+                "numerical_error",
+                f"RuntimeWarning in res_norm: {warn.message}",
+                success=False,
+                warning=detail,
+                source=f"{warn.filename}:{warn.lineno}",
+                n_nonfinite=int(np.sum(~np.isfinite(f))),
+            )
+
+            # construct a specialized warning to raise
+            msg =   "RuntimeWarning caught in res_norm!\n"
+            msg += f"{detail} (from {warn.filename}:{warn.lineno})\n"
+            msg += f"f.real: {f.real}\n"
+            msg += f"f.imag: {f.imag}\n"
+            msg += f"norm parts: {np.square(f.real), np.square(f.imag)}"
+            raise ResNormError(msg)
 
         return out
 
@@ -779,11 +925,11 @@ class FanRoots:
 
             try:
                 self._grad = J.T @ F
-            except FloatingPointError:
+            except FloatingPointError as e:
                 self._grad = None
-                self.finished_reason = "FloatingPointError in grad()"
-                self.finished = True
-                self.success  = False
+                self._terminate("numerical_error",
+                                f"FloatingPointError in grad(): {e}",
+                                success=False, warning=repr(e))
 
         return self._grad
 
@@ -850,6 +996,12 @@ class FanRoots:
                 print("Deciding upon a step to propose...")
             tic = time.time()
             step = self.compute_next_step()
+
+            # the starting point counts as a candidate best point (the
+            # proposal has already evaluated fct here, so this is cached)
+            if self.best_x is None:
+                self._note_best(self.res_norm())
+
             if self.only_heights:
                 step_t = step
             else:
@@ -955,16 +1107,6 @@ class FanRoots:
                         self.max_momentum,
                         self.momentum_reward*self.momentum)
 
-            # record the history
-            if self.history_level >= 1:
-                # record the current parameters
-                self.history.append(self.x())
-
-            if (self.delta_heading is not None and
-                self.delta_heading >= self.concerning_angle):
-                # record steps with large changes in angle
-                self.history_largeangle.append(self.x())
-
             if self.history_level >= 2:
                 # also record the step proposals and whether or not they were
                 # successful
@@ -976,6 +1118,13 @@ class FanRoots:
             self.heights = h
             self.other   = other
             self.set_triang(triang)
+            # with carry_kappa, a step that flopped has updated the
+            # intersection numbers incrementally (CYTools' flop hook sets
+            # triang.kappa); use those
+            if (self.carry_kappa and
+                    not hasattr(triang, '_fanroots_kappa') and
+                    isinstance(getattr(triang, 'kappa', None), np.ndarray)):
+                triang._fanroots_kappa = triang.kappa
             self.set_kappa(getattr(triang, '_fanroots_kappa', None))
             self.anc     = anc
 
@@ -1006,53 +1155,33 @@ class FanRoots:
                         )[problematic[0]]
                         self.heights = self.heights + 1e-8*n/np.linalg.norm(n)
 
-            # update residual norm in history
-            self.history_res_norm.append(self.res_norm())
+            # the residual at the new point
+            res_after = self.res_norm()
+
+            # history: history[k] is the point whose residual is
+            # history_res_norm[k] (both recorded after the step)
+            self.history_res_norm.append(res_after)
+            if self.history_level >= 1:
+                self.history.append(self.x())
+            if (self.delta_heading is not None and
+                self.delta_heading >= self.concerning_angle):
+                # record steps with large changes in angle
+                self.history_largeangle.append(self.x())
+            self._note_best(res_after)
 
             # if there was a warning in res_norm, that artificially ends
             # the run... only override finished if no such early halting
             if not self.finished:
-                if (
-                    len(self.history_res_norm) >= self.growth_demand_timescale
-                    and (
-                        0.50 * self.history_res_norm[
-                            -int(self.growth_demand_timescale)
-                        ] <= self.history_res_norm[-1]
-                    )
-                ):
-                    # did not see growth over the demanded timescale
-                    self.finished_reason = "didn't meet demanded timescale"
-                    self.finished = True
-                    self.success = False
-                else:
-                    # compute the norm of the residuals, check if we're done
-                    if self.res_norm()<self.tolerance:
-                        self.finished_reason = "converged"
-                        self.finished = True
-                        self.success  = True
-                    elif not self.last_step_success:
-                        # name the distance, not the floor: a walk truncated at
-                        # a wall shrinks geometrically, so lowering the floor
-                        # buys nothing
-                        anc   = self.anc or {}
-                        moved = anc.get('step_norm')
-                        wall  = anc.get('walk_status')
-                        reason = "stalled: last step moved "
-                        reason += ("?" if moved is None else f"{moved:.3g}")
-                        reason += f" < min_step_size={self.min_step_size:g}"
-                        if wall:
-                            reason += f" ({wall})"
-                        self.finished_reason = reason
-                        self.finished = True
-                        self.success  = False
-
-                if (not self.finished and
-                    self._user_halting_fct is not None and
-                    self._user_halting_fct(self) == True):
-                    # not naturally done, but halted by user
-                    self.finished = True
+                self._check_halting()
         except ResNormError:
             pass
+        except BaseException as e:
+            # leave a record of the state the solve died in, then re-raise
+            # the exception unchanged. BaseException: callers' timeouts
+            # (alarm-based interrupts) are recorded too
+            self._terminate("exception", f"{type(e).__name__}: {e}",
+                            success=False, exc_type=type(e).__name__)
+            raise
 
         # plot status
         if self.plotting:
@@ -1063,6 +1192,44 @@ class FanRoots:
             return self.get_state()
         else:
             return self.get_status()
+
+    def _note_best(self, res):
+        if res < self.best_res_norm:
+            self.best_res_norm = float(res)
+            self.best_x = np.array(self.x(), copy=True)
+            self.best_step = self.num_steps
+
+    def _check_halting(self):
+        """Decide whether the step just taken ends the solve, and why."""
+        res = self.history_res_norm[-1]
+        T = self.growth_demand_timescale
+        if res < self.tolerance:
+            self._terminate("converged", "converged", success=True)
+        elif (len(self.history_res_norm) >= T and
+              0.50 * self.history_res_norm[-int(T)] <= res):
+            # did not see growth over the demanded timescale
+            self._terminate("no_progress", "didn't meet demanded timescale",
+                            success=False, timescale=T)
+        elif not self.last_step_success:
+            # name the distance, not the floor: a walk truncated at a wall
+            # shrinks geometrically, so lowering the floor buys nothing
+            anc   = self.anc or {}
+            moved = anc.get('step_norm')
+            wall  = anc.get('walk_status')
+            reason = "stalled: last step moved "
+            reason += ("?" if moved is None else f"{moved:.3g}")
+            reason += f" < min_step_size={self.min_step_size:g}"
+            if wall:
+                reason += f" ({wall})"
+            self._terminate(
+                "stalled_at_wall" if wall else "stalled", reason,
+                success=False, wall=wall, step_norm=moved,
+                failure_mode=anc.get('failure_mode'))
+        elif (self._user_halting_fct is not None and
+              self._user_halting_fct(self) == True):
+            # not naturally done, but halted by user; success is left as is
+            self._terminate("user_halt", "halted by user_halting_fct",
+                            success=self.success)
 
     def optimize(self):
         """
