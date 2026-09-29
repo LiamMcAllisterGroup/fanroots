@@ -2,6 +2,8 @@
 ``FanRoots.TERMINATIONS`` and ``finished_reason`` is never left at "N/A". Also pins
 the bookkeeping that diagnoses a solve after the fact: ``history`` aligned with
 ``history_res_norm``, and the best point seen."""
+import warnings
+
 import numpy as np
 import pytest
 
@@ -167,3 +169,16 @@ def test_interrupt_is_recorded_then_reraised(vc):
         opt.step()
     _assert_explained(opt)
     assert opt.termination_info["exc_type"] == "Alarm"
+
+
+def test_objective_warnings_reach_the_caller(vc):
+    def fct(o, h):
+        warnings.warn("from the objective", UserWarning)
+        return np.zeros(o.h11)
+
+    def jac(o, h):
+        return np.eye(o.h11, len(h))
+
+    opt = FanRoots(vc=vc, fct=fct, jac=jac, verbosity=-1)
+    with pytest.warns(UserWarning, match="from the objective"):
+        opt.res_norm()

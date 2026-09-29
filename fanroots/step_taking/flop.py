@@ -92,10 +92,9 @@ class FlopStep:
     def _kappa_hooks():
         """
         flip_linear hooks that carry the intersection numbers through the
-        walk: the start fan's come from the cache when present (CYTools'
-        flop_linear recomputes them on every call), and each flip updates
-        them incrementally, as flop_linear does. None if CYTools' flop update
-        is unavailable, in which case flop_linear is used as is.
+        walk: the start fan's are taken from its cache (computed only if it
+        has none) and each flip updates them incrementally. None if CYTools'
+        flop update is unavailable.
         """
         try:
             from cytools.vector_config.fan import flop as kappa_flop
@@ -120,33 +119,28 @@ class FlopStep:
         # exactly what flip_linear returns in that case (status 1, h_to, the
         # same fan, its hyperplanes, 0 flips), using flip_linear's own tests
         # (h_from strictly inside, h_to inside with >= 0); anything else
-        # takes the full walk, which also raises as before
+        # takes the full walk, which raises where flip_linear raises
         H = FlopStep._hyperplanes(triang)
         if np.all(H @ h_from > 0) and np.all(H @ h_to >= 0):
             return 1, np.array(h_to), triang, H, 0
-        hooks = FlopStep._kappa_hooks()
-        if hooks is not None:
-            # CYTools' flop_linear, with the start fan's kappa taken from the
-            # cache instead of recomputed on every call
-            hook_init, hook_flip = hooks
-            return triang.flip_linear(
-                h_target=h_to,
-                h_init=h_from,
-                stop_at_deletion=True,
-                max_N_flips=max_flips,
-                verbosity=optimizer.verbosity-1,
-                check_regularity=False,
-                hook_init=hook_init,
-                hook_flip=hook_flip,
-            )
-        return triang.flop_linear(
+        walk = dict(
             h_target=h_to,
             h_init=h_from,
             stop_at_deletion=True,
             max_N_flips=max_flips,
             verbosity=optimizer.verbosity-1,
-            check_regularity=False
+            check_regularity=False,
         )
+        if not getattr(optimizer, 'carry_kappa', False):
+            # the intersection numbers are not carried through the walk (see
+            # FanRoots.carry_kappa): walk without them
+            return triang.flip_linear(**walk)
+        hooks = FlopStep._kappa_hooks()
+        if hooks is None:
+            return triang.flop_linear(**walk)
+        hook_init, hook_flip = hooks
+        return triang.flip_linear(**walk, hook_init=hook_init,
+                                  hook_flip=hook_flip)
 
     def __call__(self, optimizer, step, project=False, tau=1e-4):
         # current, target heights

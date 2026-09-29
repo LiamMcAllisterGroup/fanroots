@@ -63,6 +63,13 @@ class ResNormError(Exception):
     """
     pass
 
+class KappaRecomputeWarning(UserWarning):
+    """
+    Intersection numbers were recomputed from scratch after a flop, although
+    the flop step can update them incrementally (``carry_kappa=True``).
+    """
+    pass
+
 def always_true(*args, **kwargs):
     return True
 
@@ -212,14 +219,17 @@ class FanRoots:
             Factor by which to increase momentum on good steps.
             Defaults to 1.5.
         carry_kappa : bool, optional
-            After a step that flops, take the intersection numbers from
-            the step taker's incremental flop update (CYTools' flop hook)
-            instead of recomputing them from scratch. Much faster when
-            the objective reads ``kappa`` and the solve flops often
-            (e.g. VolumeFinder). The two agree to round-off (~1e-14), so
-            trajectories through flops can differ from the default at
-            that level, which can change the outcome of sensitive solves.
-            Defaults to False (recompute, as before).
+            If True, flop steps update the intersection numbers
+            incrementally through each flop (CYTools' flop hooks) and
+            ``kappa`` uses those values. If False, walks do no
+            intersection-number work, and ``kappa`` is computed from
+            scratch when first read in a new chamber (a
+            ``KappaRecomputeWarning`` says so once). The incremental and
+            recomputed values agree to ~1e-14, so the two settings can
+            follow slightly different trajectories through flops, and
+            sensitive solves can end at different points. True is faster
+            whenever the objective reads ``kappa`` and the solve flops.
+            Defaults to False.
         history_level : int, optional
             The level at which we record history. Higher means more
             recording. Defaults to 0.
@@ -427,13 +437,21 @@ class FanRoots:
         """
         The current chamber's intersection numbers (in basis, pushed down).
 
-        Computed on first use and cached on the triangulation. Lazy because
-        many objectives (e.g. KMS) never read them, and recomputing them from
-        scratch after every flip dominated those solves.
+        Computed on first use and cached on the triangulation, so objectives
+        that never read them (e.g. KMS) never pay for them. See carry_kappa
+        for how they are obtained after a flop.
         """
         if self._kappa is None:
             tri = self.triang
             if not hasattr(tri, '_fanroots_kappa'):
+                if self.num_flips and not self.carry_kappa:
+                    warnings.warn(
+                        "recomputing intersection numbers from scratch after "
+                        "a flop; pass carry_kappa=True to update them "
+                        "incrementally through flops instead (faster; may "
+                        "change trajectories at round-off relative to "
+                        "carry_kappa=False)",
+                        KappaRecomputeWarning, stacklevel=2)
                 # `triang.kappa` is an alias for `intersection_numbers` in
                 # cytools, so we can't reuse that name for our cached array
                 tri._fanroots_kappa = tri.intersection_numbers(
@@ -623,7 +641,7 @@ class FanRoots:
         """
         End the solve, recording why.
 
-        Sets ``finished``/``success``/``finished_reason`` as before, plus
+        Sets ``finished``/``success``/``finished_reason``, plus
         ``termination`` (a code from ``TERMINATIONS``) and
         ``termination_info``, which always includes the residual trend so a
         caller can tell "stopped while still descending" (the path was
@@ -839,39 +857,45 @@ class FanRoots:
                     self.set_kappa(kappa)
             # ^^^^ FUNCTION CALL ^^^^
 
-            for warn in w:
-                if not issubclass(warn.category, RuntimeWarning):
-                    continue
-                detail = f"{warn.category.__name__}: {warn.message}"
+        # handled after the capture, so warnings passed on are not captured again
+        for warn in w:
+            if not issubclass(warn.category, RuntimeWarning):
+                # only RuntimeWarnings are handled here; pass any other
+                # warning the objective raised on to the caller
+                warnings.warn_explicit(warn.message, warn.category,
+                                       warn.filename, warn.lineno,
+                                       source=warn.source)
+                continue
+            detail = f"{warn.category.__name__}: {warn.message}"
 
-                if self.reckless_mode:
-                    # keep going, as requested; say so once per distinct
-                    # warning rather than once per call
-                    if detail not in self._reckless_seen:
-                        self._reckless_seen.add(detail)
-                        if self.verbosity >= 0:
-                            print(f"reckless_mode: ignoring {detail} "
-                                  f"(from {warn.filename}:{warn.lineno})")
-                    continue
+            if self.reckless_mode:
+                # keep going, as requested; say so once per distinct
+                # warning rather than once per call
+                if detail not in self._reckless_seen:
+                    self._reckless_seen.add(detail)
+                    if self.verbosity >= 0:
+                        print(f"reckless_mode: ignoring {detail} "
+                              f"(from {warn.filename}:{warn.lineno})")
+                continue
 
-                # halt, naming the warning
-                self.last_step_success = False
-                self._terminate(
-                    "numerical_error",
-                    f"RuntimeWarning in res_norm: {warn.message}",
-                    success=False,
-                    warning=detail,
-                    source=f"{warn.filename}:{warn.lineno}",
-                    n_nonfinite=int(np.sum(~np.isfinite(f))),
-                )
+            # halt, naming the warning
+            self.last_step_success = False
+            self._terminate(
+                "numerical_error",
+                f"RuntimeWarning in res_norm: {warn.message}",
+                success=False,
+                warning=detail,
+                source=f"{warn.filename}:{warn.lineno}",
+                n_nonfinite=int(np.sum(~np.isfinite(f))),
+            )
 
-                # construct a specialized warning to raise
-                msg =   "RuntimeWarning caught in res_norm!\n"
-                msg += f"{detail} (from {warn.filename}:{warn.lineno})\n"
-                msg += f"f.real: {f.real}\n"
-                msg += f"f.imag: {f.imag}\n"
-                msg += f"norm parts: {np.square(f.real), np.square(f.imag)}"
-                raise ResNormError(msg)
+            # construct a specialized warning to raise
+            msg =   "RuntimeWarning caught in res_norm!\n"
+            msg += f"{detail} (from {warn.filename}:{warn.lineno})\n"
+            msg += f"f.real: {f.real}\n"
+            msg += f"f.imag: {f.imag}\n"
+            msg += f"norm parts: {np.square(f.real), np.square(f.imag)}"
+            raise ResNormError(msg)
 
         return out
 
@@ -1094,9 +1118,9 @@ class FanRoots:
             self.heights = h
             self.other   = other
             self.set_triang(triang)
-            # a step taker that flopped has already updated the intersection
-            # numbers incrementally (CYTools' flop hook sets triang.kappa);
-            # with carry_kappa, cache those rather than recompute from scratch
+            # with carry_kappa, a step that flopped has updated the
+            # intersection numbers incrementally (CYTools' flop hook sets
+            # triang.kappa); use those
             if (self.carry_kappa and
                     not hasattr(triang, '_fanroots_kappa') and
                     isinstance(getattr(triang, 'kappa', None), np.ndarray)):
@@ -1153,8 +1177,8 @@ class FanRoots:
             pass
         except BaseException as e:
             # leave a record of the state the solve died in, then re-raise
-            # so callers see the exception exactly as before. BaseException:
-            # callers' timeouts (alarm-based interrupts) must be recorded too
+            # the exception unchanged. BaseException: callers' timeouts
+            # (alarm-based interrupts) are recorded too
             self._terminate("exception", f"{type(e).__name__}: {e}",
                             success=False, exc_type=type(e).__name__)
             raise
