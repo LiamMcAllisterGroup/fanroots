@@ -25,6 +25,8 @@
 
 import numpy as np
 
+from fanroots.kappa import integral_kappa
+
 class FlopStep:
     """
     Step method that advances through the fan by flopping.
@@ -92,9 +94,9 @@ class FlopStep:
     def _kappa_hooks():
         """
         flip_linear hooks that carry the intersection numbers through the
-        walk: the start fan's are taken from its cache (computed only if it
-        has none) and each flip updates them incrementally. None if CYTools'
-        flop update is unavailable.
+        walk: the start fan's come from its cache and each flip updates them
+        incrementally, rounded to integers (``integral_kappa``) like a fresh
+        computation. None if CYTools' flop update is unavailable.
         """
         try:
             from cytools.vector_config.fan import flop as kappa_flop
@@ -104,12 +106,12 @@ class FlopStep:
         def hook_init(fan):
             k = getattr(fan, '_fanroots_kappa', None)
             if k is None:
-                k = fan._fanroots_kappa = fan.intersection_numbers(
-                    pushed_down=True, in_basis=True, as_np_array=True)
+                k = fan._fanroots_kappa = integral_kappa(fan.intersection_numbers(
+                    pushed_down=True, in_basis=True, as_np_array=True))
             fan.kappa = k
 
         def hook_flip(fanpre, fanpost, circ):
-            fanpost.kappa = kappa_flop(fanpre, fanpre.kappa, circ)
+            fanpost.kappa = integral_kappa(kappa_flop(fanpre, fanpre.kappa, circ))
 
         return hook_init, hook_flip
 
@@ -131,13 +133,13 @@ class FlopStep:
             verbosity=optimizer.verbosity-1,
             check_regularity=False,
         )
-        if not getattr(optimizer, 'carry_kappa', False):
-            # the intersection numbers are not carried through the walk (see
-            # FanRoots.carry_kappa): walk without them
-            return triang.flip_linear(**walk)
+        # carry the intersection numbers through the walk only if the start
+        # fan has them: an objective that never reads kappa never pays for
+        # it, and one that does gets them updated flop by flop. Both routes
+        # give the same (integer) values
         hooks = FlopStep._kappa_hooks()
-        if hooks is None:
-            return triang.flop_linear(**walk)
+        if hooks is None or getattr(triang, '_fanroots_kappa', None) is None:
+            return triang.flip_linear(**walk)
         hook_init, hook_flip = hooks
         return triang.flip_linear(**walk, hook_init=hook_init,
                                   hook_flip=hook_flip)

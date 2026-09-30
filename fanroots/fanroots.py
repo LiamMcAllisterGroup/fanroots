@@ -48,6 +48,7 @@ warnings.filterwarnings(
 from fanroots.step_proposal import newton, gauss_newton, lma, gradient_descent
 from fanroots.step_size import naive, backtracking_line_search, shrink, ternary
 from fanroots.step_taking import flop, jump
+from fanroots.kappa import integral_kappa
 from numpy.typing import ArrayLike
 from collections.abc import Callable
 from typing import TYPE_CHECKING
@@ -60,13 +61,6 @@ if TYPE_CHECKING:  # for type checkers only; the cytools types are resolved at r
 class ResNormError(Exception):
     """
     Raised when residual norm computation fails (overflow).
-    """
-    pass
-
-class KappaRecomputeWarning(UserWarning):
-    """
-    Intersection numbers were recomputed from scratch after a flop, although
-    the flop step can update them incrementally (``carry_kappa=True``).
     """
     pass
 
@@ -105,9 +99,6 @@ class FanRoots:
         step_taking_method   = "flop",
         step_taking_schedule = None,
         learning_rate: float = None,
-
-        # intersection numbers across flips (opt-in)
-        carry_kappa: bool = False,
 
         # momentum (semi-questionable)
         use_momentum:      bool = True,
@@ -218,18 +209,6 @@ class FanRoots:
         momentum_reward : float, optional
             Factor by which to increase momentum on good steps.
             Defaults to 1.5.
-        carry_kappa : bool, optional
-            If True, flop steps update the intersection numbers
-            incrementally through each flop (CYTools' flop hooks) and
-            ``kappa`` uses those values. If False, walks do no
-            intersection-number work, and ``kappa`` is computed from
-            scratch when first read in a new chamber (a
-            ``KappaRecomputeWarning`` says so once). The incremental and
-            recomputed values agree to ~1e-14, so the two settings can
-            follow slightly different trajectories through flops, and
-            sensitive solves can end at different points. True is faster
-            whenever the objective reads ``kappa`` and the solve flops.
-            Defaults to False.
         history_level : int, optional
             The level at which we record history. Higher means more
             recording. Defaults to 0.
@@ -318,7 +297,6 @@ class FanRoots:
         self.max_momentum  = max_momentum
         self.momentum_penalty = momentum_penalty
         self.momentum_reward = momentum_reward
-        self.carry_kappa = carry_kappa
 
         # different methods for taking steps have different performance
         if step_taking_schedule is None:
@@ -343,7 +321,7 @@ class FanRoots:
 
         # the current phase/intersection numbers
         self.set_triang(triang)
-        self.set_kappa(kappa)
+        self.set_kappa(None if kappa is None else integral_kappa(kappa))
 
         # initialize cached local information
         self.clear_local_cache(clear_momentum=True, clear_finished_state=True)
@@ -438,27 +416,21 @@ class FanRoots:
         The current chamber's intersection numbers (in basis, pushed down).
 
         Computed on first use and cached on the triangulation, so objectives
-        that never read them (e.g. KMS) never pay for them. See carry_kappa
-        for how they are obtained after a flop.
+        that never read them (e.g. KMS) never pay for them. After a flop they
+        come from the flop step's incremental update when the walk carried
+        them; either way they are rounded to integers (``integral_kappa``), so
+        the values do not depend on which route produced them.
         """
         if self._kappa is None:
             tri = self.triang
             if not hasattr(tri, '_fanroots_kappa'):
-                if self.num_flips and not self.carry_kappa:
-                    warnings.warn(
-                        "recomputing intersection numbers from scratch after "
-                        "a flop; pass carry_kappa=True to update them "
-                        "incrementally through flops instead (faster; may "
-                        "change trajectories at round-off relative to "
-                        "carry_kappa=False)",
-                        KappaRecomputeWarning, stacklevel=2)
                 # `triang.kappa` is an alias for `intersection_numbers` in
                 # cytools, so we can't reuse that name for our cached array
-                tri._fanroots_kappa = tri.intersection_numbers(
+                tri._fanroots_kappa = integral_kappa(tri.intersection_numbers(
                     in_basis=True,
                     pushed_down=True,
                     as_np_array=True
-                )
+                ))
             self._kappa = tri._fanroots_kappa
         return self._kappa
 
@@ -1118,11 +1090,9 @@ class FanRoots:
             self.heights = h
             self.other   = other
             self.set_triang(triang)
-            # with carry_kappa, a step that flopped has updated the
-            # intersection numbers incrementally (CYTools' flop hook sets
-            # triang.kappa); use those
-            if (self.carry_kappa and
-                    not hasattr(triang, '_fanroots_kappa') and
+            # a walk that carried the intersection numbers leaves them on the
+            # new fan (as triang.kappa, via the flop hooks); use those
+            if (not hasattr(triang, '_fanroots_kappa') and
                     isinstance(getattr(triang, 'kappa', None), np.ndarray)):
                 triang._fanroots_kappa = triang.kappa
             self.set_kappa(getattr(triang, '_fanroots_kappa', None))

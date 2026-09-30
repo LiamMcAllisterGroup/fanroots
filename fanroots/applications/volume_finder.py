@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 from fanroots.fanroots import FanRoots
+from fanroots.kappa import integral_kappa
 from fanroots.step_taking import flop, jump
 import numpy as np
 from numpy.typing import ArrayLike
@@ -110,9 +111,9 @@ class VolumeFinder(FanRoots):
         # evaluate at the current location using correct kappa
         if (not extrapolate) and (not self.triang.secondary_cone().contains(h)):
             tri = self.vc.triangulate(heights=h)
-            kappa = tri.intersection_numbers(in_basis=True,
-                                             pushed_down=True,
-                                             as_np_array=True)
+            kappa = integral_kappa(tri.intersection_numbers(in_basis=True,
+                                                            pushed_down=True,
+                                                            as_np_array=True))
             return 0.5 * (kappa@t)@t
 
         # evaluate with the current chamber's cached kappa (self.kappa); if h is
@@ -157,9 +158,9 @@ def jac(optimizer, h, extrapolate=False):
         not optimizer.triang.secondary_cone().contains(h)
     ):
         tri   = optimizer.vc.triangulate(heights=h)
-        kappa = tri.intersection_numbers(in_basis=True,
-                                         pushed_down=True,
-                                         as_np_array=True)
+        kappa = integral_kappa(tri.intersection_numbers(in_basis=True,
+                                                        pushed_down=True,
+                                                        as_np_array=True))
     else:
         kappa = optimizer.kappa
 
